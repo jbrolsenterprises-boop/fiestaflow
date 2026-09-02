@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FiestaFlow | Sales & Franchise Portal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+
+  <script>
+    (async function protectRoute() {
+      try {
+        let retries = 0;
+        while ((typeof supabase === 'undefined' || !supabase.auth) && retries < 20) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+          retries++;
+        }
+
+        if (typeof supabase === 'undefined' || !supabase.auth) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error || !session) {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+            subscription.unsubscribe();
+            if (!currentSession) {
+              window.location.href = 'login.html';
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Auth protection error:', err);
+        window.location.href = 'login.html';
+      }
+    })();
+  </script>
+
+  <style>
+    /* Petron-inspired blue, red, and white theme */
+    :root {
+      --ink: #102b4c;
+      --muted: #6f7f91;
+      --line: #d9e3ee;
+      --bg: #f5f8fc;
+      --green: #004b93;
+      --mint: #e8f1fa;
+      --amber: #d81e2c;
+      --red: #d81e2c;
+      --purple: #315f9d;
+      --shadow: 0 10px 24px #003b7412;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 13px Manrope, Arial;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* --- Side Navigation Bar --- */
+    .side {
+      width: 242px;
+      position: fixed;
+      inset: 0 auto 0 0;
+      background: #003b76;
+      color: #d8e9fa;
+      padding: 25px 14px;
+      display: flex;
+      flex-direction: column;
+      z-index: 5;
+    }
+
+    .brand {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .brand span {
+      background: #d81e2c;
+      color: #fff;
+      border-radius: 7px;
+      padding: 3px 7px;
+      margin-right: 5px;
+      font-size: 17px;
+    }
+
+    .sub {
+      color: #a9c9e7;
+      font: 9px 'DM Mono';
+      letter-spacing: 1px;
+      margin: 12px 10px 26px;
+      text-transform: uppercase;
+    }
+
+    nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    nav::-webkit-scrollbar {
+      width: 4px;
+    }
+    nav::-webkit-scrollbar-thumb {
+      background: var(--line);
+      border-radius: 4px;
+    }
+
+    nav>small {
+      font: 9px 'DM Mono';
+      letter-spacing: 1px;
+      margin: 23px 10px 5px;
+      color: #8fb5d9;
+      text-transform: uppercase;
+    }
+
+    .nav {
+      height: 41px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #d1e4f5;
+      text-align: left;
+      padding: 0 11px;
+      font: 13px Manrope;
+      display: flex;
+      gap: 11px;
+      align-items: center;
+      cursor: pointer;
+      width: 100%;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav:hover, .nav.active {
+      background: #09569d;
+      color: #fff;
+    }
+
+    .nav b {
+      font-weight: 600;
+    }
+
+    .nav i {
+      margin-left: auto;
+      font: 10px 'DM Mono';
+      background: #1b6aac;
+      padding: 2px 6px;
+      border-radius: 9px;
+      font-style: normal;
+      color: #fff;
+    }
+
+    .nav i.bad {
+      background: #d81e2c;
+      color: #fff;
+    }
+
+    .profile {
+      margin-top: auto;
+      padding: 17px 6px 0;
+      border-top: 1px solid #22639f;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      cursor: pointer;
+      border-left: 0;
+      border-right: 0;
+      border-bottom: 0;
+      border-radius: 7px;
+      transition: background 0.15s ease;
+    }
+
+    .profile:hover {
+      background: #09569d;
+    }
+
+    .profile>span {
+      width: 31px;
+      height: 31px;
+      border-radius: 50%;
+      background: #e7f1fb;
+      color: #004b93;
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .profile p {
+      margin: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .profile b {
+      display: block;
+      font-size: 11px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile small {
+      display: block;
+      font-size: 9px;
+      color: #b9d3ec;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile i {
+      margin-left: auto;
+      color: #b9d3ec;
+      font-style: normal;
+      font-family: monospace;
+    }
+
+    /* --- Main Workspace Layout --- */
+    main {
+      margin-left: 242px;
+      width: calc(100% - 242px);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    header {
+      height: 72px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 0 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header small, header b {
+      display: block;
+    }
+
+    header small {
+      font: 10px 'DM Mono';
+      color: var(--muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    header b {
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .head-actions {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .live, .status {
+      font: 9px 'DM Mono';
+      padding: 5px 7px;
+      border-radius: 4px;
+      color: #004b93;
+      background: #e7f1fb;
+      font-style: normal;
+    }
+
+    .outline, .primary {
+      border: 1px solid #d8e1dc;
+      background: #fff;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font: 700 11px Manrope;
+      color: #375048;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .primary {
+      background: #004b93;
+      color: #fff;
+      border-color: #004b93;
+    }
+
+    .primary:hover {
+      background: #003b76;
+      border-color: #003b76;
+    }
+
+    /* --- Pages & Content Elements --- */
+    .page {
+      display: none;
+      max-width: 1500px;
+      padding: 32px 39px 48px;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .metrics article, .panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      box-shadow: var(--shadow);
+    }
+
+    .metrics article {
+      padding: 17px;
+      min-height: 130px;
+      position: relative;
+    }
+
+    .metrics small {
+      font: 10px 'DM Mono';
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .metrics>b {
+      display: block;
+      margin: 10px 0 3px;
+      font-size: 23px;
+      letter-spacing: -.8px;
+      color: var(--ink);
+    }
+
+    .panel {
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+    }
+
+    .panel h2 {
+      font-size: 14px;
+      margin: 0;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .panel-head p {
+      font-size: 10px;
+      color: var(--muted);
+      margin: 4px 0 0;
+    }
+
+    .form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 11px;
+    }
+
+    .form label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #38516e;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .form select, .form input {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 10px;
+      font: 11px Manrope;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .form select:focus, .form input:focus {
+      border-color: #004b93;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .list-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .list-item {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      padding: 11px;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+
+    @media(max-width: 720px) {
+      .side {
+        transform: translateX(-100%);
+        transition: .2s;
+      }
+      .side.open {
+        transform: none;
+      }
+      main {
+        margin-left: 0;
+        width: 100%;
+      }
+      header {
+        padding: 0 18px;
+      }
+      .page {
+        padding: 25px 17px;
+      }
+      .form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <!-- Side Navigation Bar -->
+    <aside class="side" id="sidebar">
+      <a class="brand" href="#"><span>F</span>FiestaFlow</a>
+      <small class="sub">SALES & DISTRIBUTION</small>
+      <nav>
+        <small>Operations</small>
+        <button class="nav active" id="tabBtnSales" onclick="switchTab('sales')">
+          ▦ <b>Field Transactions</b>
+        </button>
+        <button class="nav" id="tabBtnFranchise" onclick="switchTab('franchise')">
+          ⊞ <b>Franchise Lead</b><i>New</i>
+        </button>
+        <button class="nav" id="tabBtnAttendance" onclick="switchTab('attendance')">
+          ⏱️ <b>Time In / Time Out</b><i>Sync</i>
+        </button>
+        <small>Account Info</small>
+        <button class="profile" onclick="handleLogout()" title="Click to Log Out">
+          <span id="profileInitials">SF</span>
+          <p>
+            <b id="salesmanEmail">Loading user...</b>
+            <small id="profileRole">Field Sales Agent</small>
+          </p>
+          <i>···</i>
+        </button>
+      </nav>
+    </aside>
+
+    <main>
+      <header>
+        <div>
+          <small>Field Agent Portal</small>
+          <b id="headTitle">Field Transactions Ledger</b>
+        </div>
+        <div class="head-actions">
+          <span class="live">● Live terminal</span>
+          <button onclick="handleLogout()" class="outline" title="Log Out">Log Out</button>
+        </div>
+      </header>
+
+      <!-- Sales Page Section -->
+      <div id="sectionSales" class="page active">
+        <div class="metrics">
+          <article>
+            <small>TODAY'S FIELD ORDERS</small>
+            <b id="statTotalOrders">0</b>
+            <span style="color: var(--muted); font-size: 9px; display: block; margin-top: 4px;">Synchronized successfully</span>
+          </article>
+          <article>
+            <small>FIELD SALES TOTAL</small>
+            <b id="statTotalSales" style="color: #004b93;">₱0.00</b>
+            <span style="color: var(--muted); font-size: 9px; display: block; margin-top: 4px;">Gross collections</span>
+          </article>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Record Field Transaction</h2>
+              <p>Log cylinder drops, collection counts, payment details, GPS coords, and photo upload.</p>
+            </div>
+          </div>
+          
+          <div class="form">
+            <div class="full">
+              <label>Customer / Outlet Name</label>
+              <input type="text" id="customerName" placeholder="e.g. Aling Nena Sari-Sari Store">
+            </div>
+
+            <div>
+              <label>Filled Refills Issued</label>
+              <input type="number" id="fieldFilledQty" value="1" min="0" oninput="recalculateFieldSale()" style="color: #d81e2c; font-weight: 700; font-size: 14px; text-align: center;">
+            </div>
+
+            <div>
+              <label>Empties Returned</label>
+              <input type="number" id="fieldEmptyQty" value="1" min="0" oninput="recalculateFieldSale()" style="color: #004b93; font-weight: 700; font-size: 14px; text-align: center;">
+            </div>
+
+            <div>
+              <label>Payment Mode</label>
+              <select id="fieldPaymentMethod">
+                <option value="cash">Cash on Hand</option>
+                <option value="gcash">GCash Transfer</option>
+                <option value="credit">Store Credit / Collect Later</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Computed Amount</label>
+              <div id="fieldTotalDisplay" style="background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; font-weight: 800; font-size: 14px; color: #d81e2c; text-align: center; height: 38px; display: flex; align-items: center; justify-content: center; font-family: 'DM Mono';">
+                ₱35.00
+              </div>
+            </div>
+
+            <div>
+              <label>GPS Coordinates</label>
+              <div style="display: flex; gap: 5px;">
+                <input type="text" id="fieldGpsCoords" placeholder="Lat, Lng" readonly style="background: #f0f4f8;">
+                <button type="button" onclick="captureGPS('fieldGpsCoords')" class="outline" style="white-space: nowrap; height: 38px;">📍 Get GPS</button>
+              </div>
+            </div>
+
+            <div>
+              <label>Attach Proof / Photo</label>
+              <input type="file" id="fieldAttachment" accept="image/*" style="padding: 6px;">
+            </div>
+
+            <div class="full" style="margin-top: 8px;">
+              <button onclick="submitFieldTransaction()" class="primary" style="width: 100%; height: 42px;">
+                Submit Field Transaction
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Recent Field Logs</h2>
+              <p>Real-time route order transaction history.</p>
+            </div>
+          </div>
+          <div id="fieldTransactionsList" class="list-container">
+            <p style="color: var(--muted); text-align: center; padding: 16px;">Loading field records...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Franchise Page Section -->
+      <div id="sectionFranchise" class="page">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>New Franchise Inquiry / Registration</h2>
+              <p>Submit prospect applications with GPS location tracking and establishment photo upload.</p>
+            </div>
+          </div>
+          
+          <div class="form">
+            <div class="full">
+              <label>Business / Store Name</label>
+              <input type="text" id="franchiseBusinessName" placeholder="e.g. CDO Prime Water Hub">
+            </div>
+
+            <div>
+              <label>Owner's Full Name</label>
+              <input type="text" id="franchiseOwnerName" placeholder="Juan Dela Cruz">
+            </div>
+
+            <div>
+              <label>Contact Number</label>
+              <input type="text" id="franchisePhone" placeholder="09171234567">
+            </div>
+
+            <div class="full">
+              <label>Email Address</label>
+              <input type="email" id="franchiseEmail" placeholder="owner@gmail.com">
+            </div>
+
+            <div>
+              <label>Franchise Package Tier</label>
+              <select id="franchiseTier">
+                <option value="Standard">Standard Package</option>
+                <option value="Premium">Premium Package</option>
+                <option value="Enterprise">Enterprise Package</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Proposed Location / City</label>
+              <input type="text" id="franchiseLocation" placeholder="Carmen, CDO">
+            </div>
+
+            <div>
+              <label>GPS Coordinates</label>
+              <div style="display: flex; gap: 5px;">
+                <input type="text" id="franchiseGpsCoords" placeholder="Lat, Lng" readonly style="background: #f0f4f8;">
+                <button type="button" onclick="captureGPS('franchiseGpsCoords')" class="outline" style="white-space: nowrap; height: 38px;">📍 Get GPS</button>
+              </div>
+            </div>
+
+            <div>
+              <label>Upload Site Photo</label>
+              <input type="file" id="franchiseAttachment" accept="image/*" style="padding: 6px;">
+            </div>
+
+            <div class="full" style="margin-top: 8px;">
+              <button onclick="submitFranchiseLead()" class="primary" style="width: 100%; height: 42px;">
+                Submit Franchise Application
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Your Submitted Franchise Leads</h2>
+              <p>Live approval pipeline tracker for submitted network leads.</p>
+            </div>
+          </div>
+          <div id="franchiseLeadsList" class="list-container">
+            <p style="color: var(--muted); text-align: center; padding: 16px;">Loading franchise leads...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Time In / Time Out Section -->
+      <div id="sectionAttendance" class="page">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Field Agent Attendance Portal</h2>
+              <p>Clock in or clock out for your daily shift with real-time GPS tracking sync.</p>
+            </div>
+          </div>
+          
+          <div class="form">
+            <div class="full">
+              <label>Current Status & Server Time</label>
+              <div id="attendanceClockDisplay" style="background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-weight: 800; font-size: 16px; color: #004b93; text-align: center; font-family: 'DM Mono';">
+                Loading live time...
+              </div>
+            </div>
+
+            <div>
+              <label>Action Type</label>
+              <select id="attendanceType">
+                <option value="TIME_IN">🕒 TIME IN (Shift Start)</option>
+                <option value="TIME_OUT">🕒 TIME OUT (Shift End)</option>
+              </select>
+            </div>
+
+            <div>
+              <label>GPS Location Tag</label>
+              <div style="display: flex; gap: 5px;">
+                <input type="text" id="attendanceGpsCoords" placeholder="Lat, Lng" readonly style="background: #f0f4f8;">
+                <button type="button" onclick="captureGPS('attendanceGpsCoords')" class="outline" style="white-space: nowrap; height: 38px;">📍 Get GPS</button>
+              </div>
+            </div>
+
+            <div class="full">
+              <label>Optional Remarks / Notes</label>
+              <input type="text" id="attendanceRemarks" placeholder="e.g. Starting morning route at Carmen district">
+            </div>
+
+            <div class="full" style="margin-top: 8px;">
+              <button onclick="submitAttendanceSync()" class="primary" style="width: 100%; height: 42px;">
+                Submit Attendance & Sync
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Attendance Sync History</h2>
+              <p>Recorded time-in and time-out logs.</p>
+            </div>
+          </div>
+          <div id="attendanceList" class="list-container">
+            <p style="color: var(--muted); text-align: center; padding: 16px;">Loading attendance logs...</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let baseRefillPrice = 35.00;
+    let baseContainerPrice = 150.00;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Live clock ticker
+      setInterval(() => {
+        const now = new Date();
+        const timeString = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' });
+        const clockEl = document.getElementById('attendanceClockDisplay');
+        if (clockEl && !clockEl.dataset.manual) {
+          clockEl.textContent = timeString;
+        }
+      }, 1000);
+
+      if (typeof supabase !== 'undefined') {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!session) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const email = session.user.email;
+
+        let { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError || !profile) {
+          await supabase.from('profiles').upsert([
+            { id: session.user.id, email: email, role: 'salesman' }
+          ]);
+          profile = { role: 'salesman' };
+        }
+
+        document.getElementById('salesmanEmail').textContent = email;
+        document.getElementById('profileInitials').textContent = email.substring(0, 2).toUpperCase();
+
+        await fetchFieldTransactions(email);
+        await fetchFranchiseLeads(email);
+        await fetchAttendanceLogs(email);
+      }
+    });
+
+    async function handleLogout() {
+      if (typeof supabase !== 'undefined') {
+        await supabase.auth.signOut();
+      }
+      window.location.href = 'login.html';
+    }
+
+    function switchTab(tab) {
+      const salesSec = document.getElementById('sectionSales');
+      const franchiseSec = document.getElementById('sectionFranchise');
+      const attendanceSec = document.getElementById('sectionAttendance');
+      const btnSales = document.getElementById('tabBtnSales');
+      const btnFranchise = document.getElementById('tabBtnFranchise');
+      const btnAttendance = document.getElementById('tabBtnAttendance');
+      const headTitle = document.getElementById('headTitle');
+
+      salesSec.classList.remove('active');
+      franchiseSec.classList.remove('active');
+      attendanceSec.classList.remove('active');
+      btnSales.classList.remove('active');
+      btnFranchise.classList.remove('active');
+      btnAttendance.classList.remove('active');
+
+      if (tab === 'sales') {
+        salesSec.classList.add('active');
+        btnSales.classList.add('active');
+        headTitle.textContent = 'Field Transactions Ledger';
+      } else if (tab === 'franchise') {
+        franchiseSec.classList.add('active');
+        btnFranchise.classList.add('active');
+        headTitle.textContent = 'Franchise Pipeline & Leads';
+      } else if (tab === 'attendance') {
+        attendanceSec.classList.add('active');
+        btnAttendance.classList.add('active');
+        headTitle.textContent = 'Time In / Time Out Sync';
+      }
+    }
+
+    // Helper to capture GPS coordinates via browser
+    function captureGPS(targetInputId) {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+      }
+      const inputEl = document.getElementById(targetInputId);
+      inputEl.value = "Acquiring GPS...";
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(6);
+          const lng = position.coords.longitude.toFixed(6);
+          inputEl.value = `${lat}, ${lng}`;
+        },
+        (error) => {
+          console.error("GPS error:", error);
+          alert("Unable to retrieve your location. Please check permissions.");
+          inputEl.value = "";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function recalculateFieldSale() {
+      const filled = parseInt(document.getElementById('fieldFilledQty').value) || 0;
+      const empty = parseInt(document.getElementById('fieldEmptyQty').value) || 0;
+
+      let refillQty = filled;
+      let containerQty = 0;
+
+      if (empty === 0) {
+        containerQty = filled;
+      } else if (filled > empty) {
+        containerQty = filled - empty;
+      }
+
+      let subtotal = (refillQty * baseRefillPrice) + (containerQty * baseContainerPrice);
+      document.getElementById('fieldTotalDisplay').textContent = `₱${subtotal.toFixed(2)}`;
+    }
+
+    async function submitFieldTransaction() {
+      const customerName = document.getElementById('customerName').value.trim();
+      const filled = parseInt(document.getElementById('fieldFilledQty').value) || 0;
+      const empty = parseInt(document.getElementById('fieldEmptyQty').value) || 0;
+      const paymentMethod = document.getElementById('fieldPaymentMethod').value;
+      const gpsCoords = document.getElementById('fieldGpsCoords').value;
+      const fileInput = document.getElementById('fieldAttachment');
+      const totalText = document.getElementById('fieldTotalDisplay').textContent;
+      const totalAmount = parseFloat(totalText.replace('₱', '').replace(',', '')) || 0;
+
+      if (!customerName) {
+        alert("Please enter a customer or outlet name.");
+        return;
+      }
+
+      if (filled <= 0) {
+        alert("Filled issued quantity must be at least 1.");
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      let attachmentUrl = null;
+      if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        const filePath = `transactions/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage.from('uploads').upload(filePath, file);
+        if (!uploadError) {
+          const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
+          attachmentUrl = publicUrlData.publicUrl;
+        }
+      }
+
+      const transactionPayload = {
+        customer_type: 'field_outlet',
+        customer_name: customerName,
+        filled_qty: filled,
+        empty_qty: empty,
+        sale_type: empty === 0 ? 'New Purchase' : (filled > empty ? 'Mixed Transaction' : 'Standard Exchange'),
+        payment_method: paymentMethod,
+        total_amount: totalAmount,
+        gps_coords: gpsCoords,
+        attachment_url: attachmentUrl,
+        cashier_email: session ? session.user.email : 'salesman',
+        created_at: new Date().toISOString()
+      };
+
+      try {
+        const { error } = await supabase.from('transactions').insert([transactionPayload]);
+        if (error) throw error;
+
+        alert(`✅ Field transaction for "${customerName}" saved successfully!`);
+        document.getElementById('customerName').value = '';
+        document.getElementById('fieldGpsCoords').value = '';
+        document.getElementById('fieldAttachment').value = '';
+        document.getElementById('fieldFilledQty').value = 1;
+        document.getElementById('fieldEmptyQty').value = 1;
+        recalculateFieldSale();
+
+        await fetchFieldTransactions(session.user.email);
+      } catch (err) {
+        console.error("Error saving field transaction:", err);
+        alert("❌ Failed to save: " + err.message);
+      }
+    }
+
+    async function submitFranchiseLead() {
+      const businessName = document.getElementById('franchiseBusinessName').value.trim();
+      const ownerName = document.getElementById('franchiseOwnerName').value.trim();
+      const phone = document.getElementById('franchisePhone').value.trim();
+      const email = document.getElementById('franchiseEmail').value.trim();
+      const tier = document.getElementById('franchiseTier').value;
+      const location = document.getElementById('franchiseLocation').value.trim();
+      const gpsCoords = document.getElementById('franchiseGpsCoords').value;
+      const fileInput = document.getElementById('franchiseAttachment');
+
+      if (!businessName || !ownerName || !phone) {
+        alert("Please fill in at least the Business Name, Owner Name, and Contact Number.");
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      let attachmentUrl = null;
+      if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        const filePath = `franchises/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage.from('uploads').upload(filePath, file);
+        if (!uploadError) {
+          const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
+          attachmentUrl = publicUrlData.publicUrl;
+        }
+      }
+
+      const franchisePayload = {
+        business_name: businessName,
+        contact_person: ownerName, 
+        phone: phone,
+        email: email,
+        package_tier: tier || 'Standard', 
+        location: location,
+        gps_coords: gpsCoords,
+        attachment_url: attachmentUrl,
+        status: 'PENDING',
+        created_at: new Date().toISOString()
+      };
+
+      try {
+        const { error } = await supabase.from('onboardings').insert([franchisePayload]);
+        if (error) throw error;
+
+        alert(`✅ Franchise application for "${businessName}" submitted successfully!`);
+        document.getElementById('franchiseBusinessName').value = '';
+        document.getElementById('franchiseOwnerName').value = '';
+        document.getElementById('franchisePhone').value = '';
+        document.getElementById('franchiseEmail').value = '';
+        document.getElementById('franchiseLocation').value = '';
+        document.getElementById('franchiseGpsCoords').value = '';
+        document.getElementById('franchiseAttachment').value = '';
+
+        await fetchFranchiseLeads(session.user.email);
+      } catch (err) {
+        console.error("Error submitting franchise lead:", err);
+        alert("❌ Failed to submit franchise lead: " + err.message);
+      }
+    }
+
+    async function submitAttendanceSync() {
+      const type = document.getElementById('attendanceType').value;
+      const gpsCoords = document.getElementById('attendanceGpsCoords').value;
+      const remarks = document.getElementById('attendanceRemarks').value.trim();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session ? session.user.email : 'salesman';
+
+      const payload = {
+        user_email: userEmail,
+        attendance_type: type,
+        gps_coords: gpsCoords,
+        remarks: remarks,
+        created_at: new Date().toISOString()
+      };
+
+      try {
+        const { error } = await supabase.from('attendance').insert([payload]);
+        if (error) throw error;
+
+        alert(`✅ Attendance (${type}) synchronized successfully!`);
+        document.getElementById('attendanceRemarks').value = '';
+        document.getElementById('attendanceGpsCoords').value = '';
+        await fetchAttendanceLogs(userEmail);
+      } catch (err) {
+        console.error("Error syncing attendance:", err);
+        alert("❌ Failed to sync attendance: " + err.message);
+      }
+    }
+
+    async function fetchFieldTransactions(userEmail) {
+      const container = document.getElementById('fieldTransactionsList');
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 16px;">No field transactions found.</p>';
+          document.getElementById('statTotalOrders').textContent = '0';
+          document.getElementById('statTotalSales').textContent = '₱0.00';
+          return;
+        }
+
+        let totalSales = 0;
+        container.innerHTML = data.map(item => {
+          totalSales += (item.total_amount || 0);
+          return `
+            <div class="list-item">
+              <div>
+                <b>${item.customer_name || 'Outlet'}</b>
+                <small style="color: var(--muted);">Filled: ${item.filled_qty} | Empties: ${item.empty_qty} | Mode: ${item.payment_method}</small>
+              </div>
+              <div style="text-align: right;">
+                <b style="color: var(--ink);">₱${(item.total_amount || 0).toFixed(2)}</b>
+                <div style="font-family: 'DM Mono'; font-size: 9px; color: var(--muted);">${new Date(item.created_at).toLocaleTimeString()}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        document.getElementById('statTotalOrders').textContent = data.length;
+        document.getElementById('statTotalSales').textContent = `₱${totalSales.toFixed(2)}`;
+      } catch (err) {
+        console.error("Error fetching transactions:", err);
+        container.innerHTML = `<p style="color: var(--amber); text-align: center; padding: 16px;">Error loading logs: ${err.message}</p>`;
+      }
+    }
+
+    async function fetchFranchiseLeads(userEmail) {
+      const container = document.getElementById('franchiseLeadsList');
+      try {
+        const { data, error } = await supabase
+          .from('onboardings')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 16px;">No franchise leads found.</p>';
+          return;
+        }
+
+        container.innerHTML = data.map(lead => `
+          <div class="list-item">
+            <div>
+              <b>${lead.business_name}</b>
+              <small style="color: var(--muted);">Owner: ${lead.contact_person} | Phone: ${lead.phone}</small>
+            </div>
+            <div style="text-align: right; font-family: 'DM Mono'; font-size: 10px;">
+              <span style="background: #e7f1fb; color: #004b93; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${lead.status || 'PENDING'}</span>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error("Error fetching franchise leads:", err);
+        container.innerHTML = `<p style="color: var(--amber); text-align: center; padding: 16px;">Error loading leads: ${err.message}</p>`;
+      }
+    }
+
+    async function fetchAttendanceLogs(userEmail) {
+      const container = document.getElementById('attendanceList');
+      try {
+        const { data, error } = await supabase
+          .from('attendance')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 16px;">No attendance logs found.</p>';
+          return;
+        }
+
+        container.innerHTML = data.map(log => `
+          <div class="list-item">
+            <div>
+              <b>${log.attendance_type}</b>
+              <small style="color: var(--muted);">${log.remarks || 'No remarks'} | GPS: ${log.gps_coords || 'N/A'}</small>
+            </div>
+            <div style="text-align: right; font-family: 'DM Mono'; font-size: 10px;">
+              ${new Date(log.created_at).toLocaleString()}
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error("Error fetching attendance logs:", err);
+        container.innerHTML = `<p style="color: var(--amber); text-align: center; padding: 16px;">Error loading logs: ${err.message}</p>`;
+      }
+    }
+  </script>
+</body>
+</html>

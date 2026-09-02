@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FiestaFlow | Driver & Delivery Portal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+
+  <script>
+    (async function protectRoute() {
+      try {
+        let retries = 0;
+        while ((typeof supabase === 'undefined' || !supabase.auth) && retries < 20) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+          retries++;
+        }
+
+        if (typeof supabase === 'undefined' || !supabase.auth) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error || !session) {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+            subscription.unsubscribe();
+            if (!currentSession) {
+              window.location.href = 'login.html';
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Auth protection error:', err);
+        window.location.href = 'login.html';
+      }
+    })();
+  </script>
+
+  <style>
+    /* Petron-inspired blue, red, and white theme */
+    :root {
+      --ink: #102b4c;
+      --muted: #6f7f91;
+      --line: #d9e3ee;
+      --bg: #f5f8fc;
+      --green: #004b93;
+      --mint: #e8f1fa;
+      --amber: #d81e2c;
+      --red: #d81e2c;
+      --purple: #315f9d;
+      --shadow: 0 10px 24px #003b7412;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 13px Manrope, Arial;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* --- Side Navigation Bar --- */
+    .side {
+      width: 242px;
+      position: fixed;
+      inset: 0 auto 0 0;
+      background: #003b76;
+      color: #d8e9fa;
+      padding: 25px 14px;
+      display: flex;
+      flex-direction: column;
+      z-index: 5;
+    }
+
+    .brand {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .brand span {
+      background: #d81e2c;
+      color: #fff;
+      border-radius: 7px;
+      padding: 3px 7px;
+      margin-right: 5px;
+      font-size: 17px;
+    }
+
+    .sub {
+      color: #a9c9e7;
+      font: 9px 'DM Mono';
+      letter-spacing: 1px;
+      margin: 12px 10px 26px;
+      text-transform: uppercase;
+    }
+
+    nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    nav::-webkit-scrollbar {
+      width: 4px;
+    }
+    nav::-webkit-scrollbar-thumb {
+      background: var(--line);
+      border-radius: 4px;
+    }
+
+    nav>small {
+      font: 9px 'DM Mono';
+      letter-spacing: 1px;
+      margin: 23px 10px 5px;
+      color: #8fb5d9;
+      text-transform: uppercase;
+    }
+
+    .nav {
+      height: 41px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #d1e4f5;
+      text-align: left;
+      padding: 0 11px;
+      font: 13px Manrope;
+      display: flex;
+      gap: 11px;
+      align-items: center;
+      cursor: pointer;
+      width: 100%;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav:hover, .nav.active {
+      background: #09569d;
+      color: #fff;
+    }
+
+    .nav b {
+      font-weight: 600;
+    }
+
+    .nav i {
+      margin-left: auto;
+      font: 10px 'DM Mono';
+      background: #1b6aac;
+      padding: 2px 6px;
+      border-radius: 9px;
+      font-style: normal;
+      color: #fff;
+    }
+
+    .profile {
+      margin-top: auto;
+      padding: 17px 6px 0;
+      border-top: 1px solid #22639f;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      cursor: pointer;
+      border-left: 0;
+      border-right: 0;
+      border-bottom: 0;
+      border-radius: 7px;
+      transition: background 0.15s ease;
+    }
+
+    .profile:hover {
+      background: #09569d;
+    }
+
+    .profile>span {
+      width: 31px;
+      height: 31px;
+      border-radius: 50%;
+      background: #e7f1fb;
+      color: #004b93;
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .profile p {
+      margin: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .profile b {
+      display: block;
+      font-size: 11px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile small {
+      display: block;
+      font-size: 9px;
+      color: #b9d3ec;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile i {
+      margin-left: auto;
+      color: #b9d3ec;
+      font-style: normal;
+      font-family: monospace;
+    }
+
+    /* --- Main Workspace Layout --- */
+    main {
+      margin-left: 242px;
+      width: calc(100% - 242px);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    header {
+      height: 72px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 0 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header small, header b {
+      display: block;
+    }
+
+    header small {
+      font: 10px 'DM Mono';
+      color: var(--muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    header b {
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .head-actions {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .live {
+      font: 9px 'DM Mono';
+      padding: 5px 7px;
+      border-radius: 4px;
+      color: #004b93;
+      background: #e7f1fb;
+      font-style: normal;
+    }
+
+    .outline, .primary {
+      border: 1px solid #d8e1dc;
+      background: #fff;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font: 700 11px Manrope;
+      color: #375048;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .primary {
+      background: #004b93;
+      color: #fff;
+      border-color: #004b93;
+    }
+
+    .primary:hover {
+      background: #003b76;
+      border-color: #003b76;
+    }
+
+    /* --- Pages & Content Elements --- */
+    .page {
+      display: none;
+      max-width: 1500px;
+      padding: 32px 39px 48px;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+    }
+
+    .panel h2 {
+      font-size: 14px;
+      margin: 0;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .panel-head p {
+      font-size: 10px;
+      color: var(--muted);
+      margin: 4px 0 0;
+    }
+
+    .form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 11px;
+    }
+
+    .form label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #38516e;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .form select, .form input {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 10px;
+      font: 11px Manrope;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .form select:focus, .form input:focus {
+      border-color: #004b93;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .list-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    @media(max-width: 720px) {
+      .side {
+        transform: translateX(-100%);
+        transition: .2s;
+      }
+      .side.open {
+        transform: none;
+      }
+      main {
+        margin-left: 0;
+        width: 100%;
+      }
+      header {
+        padding: 0 18px;
+      }
+      .page {
+        padding: 25px 17px;
+      }
+      .form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <aside class="side" id="sidebar">
+      <a class="brand" href="#"><span>F</span>FiestaFlow</a>
+      <small class="sub">DRIVER & DISTRIBUTION</small>
+      <nav>
+        <small>Operations</small>
+        <button class="nav active" id="tabBtnAttendance" onclick="switchTab('attendance')">
+          ⏱️ <b>Time In / Time Out</b><i>Sync</i>
+        </button>
+        <button class="nav" id="tabBtnDeliveries" onclick="switchTab('deliveries')">
+          📦 <b>Assigned Deliveries</b><i>Route</i>
+        </button>
+        
+        <small>Account Info</small>
+        <button class="profile" onclick="handleLogout()" title="Click to Log Out">
+          <span id="profileInitials">DR</span>
+          <p>
+            <b id="driverEmail">Loading user...</b>
+            <small id="profileRole">Delivery Driver</small>
+          </p>
+          <i>···</i>
+        </button>
+      </nav>
+    </aside>
+
+    <main>
+      <header>
+        <div>
+          <small>Driver Terminal Portal</small>
+          <b id="headTitle">Time In / Time Out Sync</b>
+        </div>
+        <div class="head-actions">
+          <span class="live">● Live terminal</span>
+          <button onclick="handleLogout()" class="outline" title="Log Out">Log Out</button>
+        </div>
+      </header>
+
+      <div id="sectionAttendance" class="page active">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Driver Attendance Portal</h2>
+              <p>Clock in or clock out for your shift with real-time GPS verification.</p>
+            </div>
+          </div>
+          
+          <div class="form">
+            <div class="full">
+              <label>Current Status & Server Time</label>
+              <div id="attendanceClockDisplay" style="background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-weight: 800; font-size: 16px; color: #004b93; text-align: center; font-family: 'DM Mono';">
+                Loading live time...
+              </div>
+            </div>
+
+            <div>
+              <label>Action Type</label>
+              <select id="attendanceType">
+                <option value="TIME_IN">🕒 TIME IN (Shift Start)</option>
+                <option value="TIME_OUT">🕒 TIME OUT (Shift End)</option>
+              </select>
+            </div>
+
+            <div>
+              <label>GPS Location Tag</label>
+              <div style="display: flex; gap: 5px;">
+                <input type="text" id="attendanceGpsCoords" placeholder="Lat, Lng" readonly style="background: #f0f4f8;">
+                <button type="button" onclick="captureGPS('attendanceGpsCoords')" class="outline" style="white-space: nowrap; height: 38px;">📍 Get GPS</button>
+              </div>
+            </div>
+
+            <div class="full">
+              <label>Vehicle / Route Notes</label>
+              <input type="text" id="attendanceRemarks" placeholder="e.g. Starting delivery run with Truck Unit #04">
+            </div>
+
+            <div class="full" style="margin-top: 8px;">
+              <button onclick="submitAttendanceSync()" class="primary" style="width: 100%; height: 42px;">
+                Submit Attendance & Sync
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Attendance Sync History</h2>
+              <p>Recorded shift logs.</p>
+            </div>
+          </div>
+          <div id="attendanceList" class="list-container">
+            <p style="color: var(--muted); text-align: center; padding: 16px;">Loading attendance logs...</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="sectionDeliveries" class="page">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Assigned Deliveries & Manifest</h2>
+              <p>View your assigned drop-offs and update delivery statuses in real-time.</p>
+            </div>
+            <button onclick="fetchAssignedDeliveries()" class="outline">🔄 Refresh List</button>
+          </div>
+          
+          <div id="deliveriesList" class="list-container" style="max-height: 450px;">
+            <p style="color: var(--muted); text-align: center; padding: 24px;">Loading assigned deliveries...</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Live clock ticker
+      setInterval(() => {
+        const now = new Date();
+        const timeString = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' });
+        const clockEl = document.getElementById('attendanceClockDisplay');
+        if (clockEl) {
+          clockEl.textContent = timeString;
+        }
+      }, 1000);
+
+      if (typeof supabase !== 'undefined') {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!session) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const email = session.user.email;
+
+        let { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError || !profile) {
+          await supabase.from('profiles').upsert([
+            { id: session.user.id, email: email, role: 'driver' }
+          ]);
+          profile = { role: 'driver' };
+        }
+
+        document.getElementById('driverEmail').textContent = email;
+        document.getElementById('profileInitials').textContent = email.substring(0, 2).toUpperCase();
+
+        await fetchAttendanceLogs(email);
+        await fetchAssignedDeliveries();
+      }
+    });
+
+    async function handleLogout() {
+      if (typeof supabase !== 'undefined') {
+        await supabase.auth.signOut();
+      }
+      window.location.href = 'login.html';
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav').forEach(n => n.classList.remove('active'));
+
+      if (tab === 'attendance') {
+        document.getElementById('sectionAttendance').classList.add('active');
+        document.getElementById('tabBtnAttendance').classList.add('active');
+        document.getElementById('headTitle').textContent = 'Time In / Time Out Sync';
+      } else if (tab === 'deliveries') {
+        document.getElementById('sectionDeliveries').classList.add('active');
+        document.getElementById('tabBtnDeliveries').classList.add('active');
+        document.getElementById('headTitle').textContent = 'Assigned Deliveries & Manifest';
+        fetchAssignedDeliveries();
+      }
+    }
+
+    // Helper to capture GPS coordinates via browser
+    function captureGPS(targetInputId) {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+      }
+      const inputEl = document.getElementById(targetInputId);
+      inputEl.value = "Acquiring GPS...";
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(6);
+          const lng = position.coords.longitude.toFixed(6);
+          inputEl.value = `${lat}, ${lng}`;
+        },
+        (error) => {
+          console.error("GPS error:", error);
+          alert("Unable to retrieve your location. Please check permissions.");
+          inputEl.value = "";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    async function submitAttendanceSync() {
+      const type = document.getElementById('attendanceType').value;
+      const gpsCoords = document.getElementById('attendanceGpsCoords').value;
+      const remarks = document.getElementById('attendanceRemarks').value.trim();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session ? session.user.email : 'driver';
+
+      const payload = {
+        user_email: userEmail,
+        attendance_type: type,
+        gps_coords: gpsCoords,
+        remarks: remarks,
+        created_at: new Date().toISOString()
+      };
+
+      try {
+        const { error } = await supabase.from('attendance').insert([payload]);
+        if (error) throw error;
+
+        alert(`✅ Attendance (${type}) synchronized successfully!`);
+        document.getElementById('attendanceRemarks').value = '';
+        document.getElementById('attendanceGpsCoords').value = '';
+        await fetchAttendanceLogs(userEmail);
+      } catch (err) {
+        console.error("Error syncing attendance:", err);
+        alert("❌ Failed to sync attendance: " + err.message);
+      }
+    }
+
+    async function fetchAttendanceLogs(userEmail) {
+      const container = document.getElementById('attendanceList');
+      try {
+        const { data, error } = await supabase
+          .from('attendance')
+          .select('*')
+          .eq('user_email', userEmail)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 16px;">No attendance logs found.</p>';
+          return;
+        }
+
+        container.innerHTML = data.map(log => `
+          <div class="list-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--line);">
+            <div>
+              <b style="color: var(--ink);">${log.attendance_type}</b>
+              <small style="display: block; color: var(--muted);">${log.remarks || 'No remarks'}</small>
+            </div>
+            <div style="text-align: right;">
+              <small style="color: var(--muted);">${new Date(log.created_at).toLocaleString()}</small>
+              <span style="display: block; font-size: 9px; font-family: 'DM Mono'; color: #004b93;">${log.gps_coords || 'No GPS'}</span>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error("Error fetching attendance logs:", err);
+        container.innerHTML = '<p style="color: var(--red); text-align: center; padding: 16px;">Failed to load attendance logs.</p>';
+      }
+    }
+
+    async function fetchAssignedDeliveries() {
+      const container = document.getElementById('deliveriesList');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const userEmail = session ? session.user.email : '';
+
+        // Fetch orders or deliveries assigned to this driver
+        const { data, error } = await supabase
+          .from('deliveries') // Change table name if your database uses a different schema name for delivery orders
+          .select('*')
+          .or(`driver_email.eq.${userEmail},driver_email.is.null`) // Show orders explicitly assigned or unassigned pools
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          // Fallback if the table doesn't exist yet or uses standard mock display
+          container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 16px;">No delivery orders table configured yet, or no active manifests assigned.</p>';
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 16px;">No assigned deliveries right now.</p>';
+          return;
+        }
+
+        container.innerHTML = data.map(item => `
+          <div class="list-item" style="padding: 12px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; background: #fff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <b>Order #${item.id || 'N/A'} - ${item.customer_name || 'Client'}</b>
+              <span style="font-size: 10px; font-family: 'DM Mono'; background: var(--mint); color: #004b93; padding: 3px 6px; border-radius: 4px;">${item.status || 'PENDING'}</span>
+            </div>
+            <small style="display: block; color: var(--muted); margin-bottom: 8px;">📍 Destination: ${item.delivery_address || 'Address not specified'}</small>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+              <button onclick="updateDeliveryStatus(${item.id}, 'IN_TRANSIT')" class="outline" style="font-size: 10px; padding: 5px 8px;">🚚 Set In Transit</button>
+              <button onclick="updateDeliveryStatus(${item.id}, 'DELIVERED')" class="primary" style="font-size: 10px; padding: 5px 8px;">✅ Mark Delivered</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error("Error fetching deliveries:", err);
+        container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 16px;">Delivery dispatch module active. Ensure your database has a "deliveries" table linked.</p>';
+      }
+    }
+
+    async function updateDeliveryStatus(orderId, newStatus) {
+      try {
+        const { error } = await supabase
+          .from('deliveries')
+          .update({ status: newStatus })
+          .eq('id', orderId);
+
+        if (error) throw error;
+        alert(`✅ Status updated to ${newStatus}`);
+        fetchAssignedDeliveries();
+      } catch (err) {
+        console.error("Error updating status:", err);
+        alert("❌ Failed to update delivery status: " + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
