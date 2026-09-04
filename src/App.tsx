@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserProfile, SalesTransaction, InventoryStock, InventoryMovement, DailyCountLog, Franchisee, VehicleCrew, UnplannedStop, ChequeDeposit } from './types';
-import { getSupabaseClient, getSupabaseConfig, DEMO_USERS } from './lib/supabase';
+import { getSupabaseClient, getSupabaseConfig } from './lib/supabase';
 import { LoginPage } from './components/LoginPage';
 import { SupabaseConfigModal } from './components/SupabaseConfigModal';
 import { Sidebar } from './components/Sidebar';
@@ -65,6 +65,20 @@ const INITIAL_CHEQUES: ChequeDeposit[] = [
   { id: 'c2', created_at: '2026-09-02T00:00:00Z', cheque_date: '2026-09-06', issuing_bank: 'BPI (#000841)', customer_name: 'Delos Reyes Trading', amount: 60000, status: 'Queued for Deposit' },
 ];
 
+type SyncNotice = {
+  message: string;
+};
+
+const toInventoryUpsertPayload = (item: InventoryStock) => ({
+  location: item.location,
+  description: item.description || null,
+  filled_crates: item.filled_crates,
+  empty_crates: item.empty_crates,
+  damaged_units: item.damaged_units,
+  target_crates: item.target_crates,
+  status: item.status,
+});
+
 export default function App() {
   // Authentication State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
@@ -90,6 +104,7 @@ export default function App() {
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfig());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<SyncNotice | null>(null);
 
   // Business Data States
   const [transactions, setTransactions] = useState<SalesTransaction[]>(INITIAL_TRANSACTIONS);
@@ -104,6 +119,17 @@ export default function App() {
   // Modals & Printable
   const [inspectedTxn, setInspectedTxn] = useState<SalesTransaction | null>(null);
   const [printableData, setPrintableData] = useState<any>(null);
+
+  // Synchronize session on load
+  useEffect(() => {
+    if (!syncNotice) return;
+    const timeout = window.setTimeout(() => setSyncNotice(null), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [syncNotice]);
+
+  const notifySyncFallback = useCallback((message: string) => {
+    setSyncNotice({ message });
+  }, []);
 
   // Synchronize session on load
   useEffect(() => {
@@ -168,10 +194,11 @@ export default function App() {
         if (resCheques.data && resCheques.data.length > 0) setCheques(resCheques.data);
       } catch (err) {
         console.warn('Supabase fetch returned error; maintaining current datasets:', err);
+        notifySyncFallback('Supabase refresh failed. Showing the most recent local data snapshot.');
       }
     }
     setIsRefreshing(false);
-  }, [supabaseConfig.isConfigured]);
+  }, [notifySyncFallback, supabaseConfig.isConfigured]);
 
   useEffect(() => {
     if (currentUser) {
@@ -221,6 +248,7 @@ export default function App() {
         const { data, error } = await client.from('sales_transactions').insert([fullTxn]).select();
         if (error) {
           console.warn('Could not insert to Supabase, saving locally:', error.message);
+          notifySyncFallback('Sales was saved locally because Supabase is temporarily unavailable.');
         } else if (data && data[0]) {
           const inserted = data[0] as SalesTransaction;
           setTransactions((prev) => [inserted, ...prev]);
@@ -228,6 +256,7 @@ export default function App() {
         }
       } catch (err) {
         console.warn('Supabase exception:', err);
+        notifySyncFallback('Sales was saved locally because Supabase is temporarily unavailable.');
       }
     }
 
@@ -247,27 +276,34 @@ export default function App() {
       note: `Transferred ${qty} crates from ${from} to ${to}`,
     };
 
+    const updatedInventory = inventory.map((item) => {
+      if (item.location === from) {
+        return { ...item, filled_crates: Math.max(0, item.filled_crates - qty) };
+      }
+      if (item.location === to) {
+        return { ...item, filled_crates: item.filled_crates + qty };
+      }
+      return item;
+    });
+
     const client = getSupabaseClient();
     if (client && supabaseConfig.isConfigured) {
       try {
-        await client.from('inventory_movements').insert([newMovement]);
+        const { error: movementError } = await client.from('inventory_movements').insert([newMovement]);
+        if (movementError) throw movementError;
+
+        const { error: stockError } = await client
+          .from('inventory_stock')
+          .upsert(updatedInventory.map(toInventoryUpsertPayload), { onConflict: 'location' });
+        if (stockError) throw stockError;
       } catch (e) {
-        console.warn(e);
+        console.warn('Transfer sync issue:', e);
+        notifySyncFallback('Stock transfer was applied locally; Supabase sync did not complete.');
       }
     }
 
     setMovements((prev) => [newMovement, ...prev]);
-    setInventory((prev) =>
-      prev.map((item) => {
-        if (item.location === from) {
-          return { ...item, filled_crates: Math.max(0, item.filled_crates - qty) };
-        }
-        if (item.location === to) {
-          return { ...item, filled_crates: item.filled_crates + qty };
-        }
-        return item;
-      })
-    );
+    setInventory(updatedInventory);
   };
 
   // Plant Exchange
@@ -282,28 +318,35 @@ export default function App() {
       note: `Exchanged ${emptyQty} empty for ${filledQty} filled crates`,
     };
 
+    const updatedInventory = inventory.map((item) => {
+      if (item.location === 'Main warehouse') {
+        return {
+          ...item,
+          filled_crates: item.filled_crates + filledQty,
+          empty_crates: Math.max(0, item.empty_crates - emptyQty),
+        };
+      }
+      return item;
+    });
+
     const client = getSupabaseClient();
     if (client && supabaseConfig.isConfigured) {
       try {
-        await client.from('inventory_movements').insert([newMovement]);
+        const { error: movementError } = await client.from('inventory_movements').insert([newMovement]);
+        if (movementError) throw movementError;
+
+        const { error: stockError } = await client
+          .from('inventory_stock')
+          .upsert(updatedInventory.map(toInventoryUpsertPayload), { onConflict: 'location' });
+        if (stockError) throw stockError;
       } catch (e) {
-        console.warn(e);
+        console.warn('Plant exchange sync issue:', e);
+        notifySyncFallback('Plant exchange was applied locally; Supabase sync did not complete.');
       }
     }
 
     setMovements((prev) => [newMovement, ...prev]);
-    setInventory((prev) =>
-      prev.map((item) => {
-        if (item.location === 'Main warehouse') {
-          return {
-            ...item,
-            filled_crates: item.filled_crates + filledQty,
-            empty_crates: Math.max(0, item.empty_crates - emptyQty),
-          };
-        }
-        return item;
-      })
-    );
+    setInventory(updatedInventory);
   };
 
   // Add Franchisee
@@ -317,9 +360,11 @@ export default function App() {
     const client = getSupabaseClient();
     if (client && supabaseConfig.isConfigured) {
       try {
-        await client.from('franchisees').insert([newFranchisee]);
+        const { error } = await client.from('franchisees').insert([newFranchisee]);
+        if (error) throw error;
       } catch (e) {
-        console.warn(e);
+        console.warn('Franchisee create sync issue:', e);
+        notifySyncFallback('Franchisee was added locally; Supabase sync did not complete.');
       }
     }
 
@@ -331,9 +376,11 @@ export default function App() {
     const client = getSupabaseClient();
     if (client && supabaseConfig.isConfigured) {
       try {
-        await client.from('franchisees').update({ status: 'Active' }).eq('id', id);
+        const { error } = await client.from('franchisees').update({ status: 'Active' }).eq('id', id);
+        if (error) throw error;
       } catch (e) {
-        console.warn(e);
+        console.warn('Franchisee approval sync issue:', e);
+        notifySyncFallback('Franchisee was approved locally; Supabase sync did not complete.');
       }
     }
     setFranchisees((prev) =>
@@ -346,9 +393,11 @@ export default function App() {
     const client = getSupabaseClient();
     if (client && supabaseConfig.isConfigured) {
       try {
-        await client.from('franchisees').delete().eq('id', id);
+        const { error } = await client.from('franchisees').delete().eq('id', id);
+        if (error) throw error;
       } catch (e) {
-        console.warn(e);
+        console.warn('Franchisee rejection sync issue:', e);
+        notifySyncFallback('Franchisee was removed locally; Supabase sync did not complete.');
       }
     }
     setFranchisees((prev) => prev.filter((f) => f.id !== id));
@@ -359,9 +408,11 @@ export default function App() {
     const client = getSupabaseClient();
     if (client && supabaseConfig.isConfigured) {
       try {
-        await client.from('unplanned_stops').delete().eq('id', id);
+        const { error } = await client.from('unplanned_stops').delete().eq('id', id);
+        if (error) throw error;
       } catch (e) {
-        console.warn(e);
+        console.warn('Stop clearance sync issue:', e);
+        notifySyncFallback('Stop was cleared locally; Supabase sync did not complete.');
       }
     }
     setStops((prev) => prev.filter((s) => s.id !== id));
@@ -371,9 +422,11 @@ export default function App() {
     const client = getSupabaseClient();
     if (client && supabaseConfig.isConfigured) {
       try {
-        await client.from('cheque_deposits').update({ status: 'Deposited & Cleared' }).eq('id', id);
+        const { error } = await client.from('cheque_deposits').update({ status: 'Deposited & Cleared' }).eq('id', id);
+        if (error) throw error;
       } catch (e) {
-        console.warn(e);
+        console.warn('Cheque deposit sync issue:', e);
+        notifySyncFallback('Cheque status was updated locally; Supabase sync did not complete.');
       }
     }
     setCheques((prev) =>
@@ -391,9 +444,11 @@ export default function App() {
     const client = getSupabaseClient();
     if (client && supabaseConfig.isConfigured) {
       try {
-        await client.from('vehicles_and_crew').insert([newVehicle]);
+        const { error } = await client.from('vehicles_and_crew').insert([newVehicle]);
+        if (error) throw error;
       } catch (e) {
-        console.warn(e);
+        console.warn('Vehicle add sync issue:', e);
+        notifySyncFallback('Vehicle was added locally; Supabase sync did not complete.');
       }
     }
     setVehicles((prev) => [newVehicle, ...prev]);
@@ -403,9 +458,11 @@ export default function App() {
     const client = getSupabaseClient();
     if (client && supabaseConfig.isConfigured) {
       try {
-        await client.from('vehicles_and_crew').delete().eq('id', id);
+        const { error } = await client.from('vehicles_and_crew').delete().eq('id', id);
+        if (error) throw error;
       } catch (e) {
-        console.warn(e);
+        console.warn('Vehicle remove sync issue:', e);
+        notifySyncFallback('Vehicle was removed locally; Supabase sync did not complete.');
       }
     }
     setVehicles((prev) => prev.filter((v) => v.id !== id));
@@ -493,6 +550,14 @@ export default function App() {
         />
 
         <main className="flex-1 overflow-y-auto">
+          {syncNotice && (
+            <div className="px-6 pt-4">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
+                {syncNotice.message}
+              </div>
+            </div>
+          )}
+
           {activePage === 'overview' && (
             <OverviewPage
               activeSubTab={overviewSubTab}

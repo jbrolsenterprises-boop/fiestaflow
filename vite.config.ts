@@ -4,7 +4,15 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
+  const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1];
+  const configuredBase = process.env.VITE_BASE_PATH?.trim();
+  const defaultBase =
+    process.env.GITHUB_ACTIONS === 'true' && repositoryName ? `/${repositoryName}/` : '/';
+  const rawBase = configuredBase || defaultBase;
+  const normalizedBase = rawBase.startsWith('/') ? rawBase : `/${rawBase}`;
+
   return {
+    base: normalizedBase.endsWith('/') ? normalizedBase : `${normalizedBase}/`,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
