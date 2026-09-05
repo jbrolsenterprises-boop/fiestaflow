@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FiestaFlow | Sales & Franchise Portal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+
+  <style>
+    /* Petron-inspired blue, red, and white theme */
+    :root {
+      --ink: #102b4c;
+      --muted: #6f7f91;
+      --line: #d9e3ee;
+      --bg: #f5f8fc;
+      --green: #004b93;
+      --mint: #e8f1fa;
+      --amber: #d81e2c;
+      --red: #d81e2c;
+      --purple: #315f9d;
+      --shadow: 0 10px 24px #003b7412;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 13px Manrope, Arial;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* --- Side Navigation Bar --- */
+    .side {
+      width: 242px;
+      position: fixed;
+      inset: 0 auto 0 0;
+      background: #003b76;
+      color: #d8e9fa;
+      padding: 25px 14px;
+      display: flex;
+      flex-direction: column;
+      z-index: 5;
+    }
+
+    .brand {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .brand span {
+      background: #d81e2c;
+      color: #fff;
+      border-radius: 7px;
+      padding: 3px 7px;
+      margin-right: 5px;
+      font-size: 17px;
+    }
+
+    .sub {
+      color: #a9c9e7;
+      font: 9px 'DM Mono';
+      letter-spacing: 1px;
+      margin: 12px 10px 26px;
+      text-transform: uppercase;
+    }
+
+    nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    nav::-webkit-scrollbar {
+      width: 4px;
+    }
+    nav::-webkit-scrollbar-thumb {
+      background: var(--line);
+      border-radius: 4px;
+    }
+
+    nav>small {
+      font: 9px 'DM Mono';
+      letter-spacing: 1px;
+      margin: 23px 10px 5px;
+      color: #8fb5d9;
+      text-transform: uppercase;
+    }
+
+    .nav {
+      height: 41px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #d1e4f5;
+      text-align: left;
+      padding: 0 11px;
+      font: 13px Manrope;
+      display: flex;
+      gap: 11px;
+      align-items: center;
+      cursor: pointer;
+      width: 100%;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .nav:hover, .nav.active {
+      background: #09569d;
+      color: #fff;
+    }
+
+    .nav b {
+      font-weight: 600;
+    }
+
+    .nav i {
+      margin-left: auto;
+      font: 10px 'DM Mono';
+      background: #1b6aac;
+      padding: 2px 6px;
+      border-radius: 9px;
+      font-style: normal;
+      color: #fff;
+    }
+
+    .nav i.bad {
+      background: #d81e2c;
+      color: #fff;
+    }
+
+    .profile {
+      margin-top: auto;
+      padding: 17px 6px 0;
+      border-top: 1px solid #22639f;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      cursor: pointer;
+      border-left: 0;
+      border-right: 0;
+      border-bottom: 0;
+      border-radius: 7px;
+      transition: background 0.15s ease;
+    }
+
+    .profile:hover {
+      background: #09569d;
+    }
+
+    .profile>span {
+      width: 31px;
+      height: 31px;
+      border-radius: 50%;
+      background: #e7f1fb;
+      color: #004b93;
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .profile p {
+      margin: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .profile b {
+      display: block;
+      font-size: 11px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile small {
+      display: block;
+      font-size: 9px;
+      color: #b9d3ec;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile i {
+      margin-left: auto;
+      color: #b9d3ec;
+      font-style: normal;
+      font-family: monospace;
+    }
+
+    /* --- Main Workspace Layout --- */
+    main {
+      margin-left: 242px;
+      width: calc(100% - 242px);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    header {
+      height: 72px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 0 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header small, header b {
+      display: block;
+    }
+
+    header small {
+      font: 10px 'DM Mono';
+      color: var(--muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    header b {
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .head-actions {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .live, .status {
+      font: 9px 'DM Mono';
+      padding: 5px 7px;
+      border-radius: 4px;
+      color: #004b93;
+      background: #e7f1fb;
+      font-style: normal;
+    }
+
+    .outline, .primary {
+      border: 1px solid #d8e1dc;
+      background: #fff;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font: 700 11px Manrope;
+      color: #375048;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .primary {
+      background: #004b93;
+      color: #fff;
+      border-color: #004b93;
+    }
+
+    .primary:hover {
+      background: #003b76;
+      border-color: #003b76;
+    }
+
+    /* --- Pages & Content Elements --- */
+    .page {
+      display: none;
+      max-width: 1500px;
+      padding: 32px 39px 48px;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .metrics article, .panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      box-shadow: var(--shadow);
+    }
+
+    .metrics article {
+      padding: 17px;
+      min-height: 130px;
+      position: relative;
+    }
+
+    .metrics small {
+      font: 10px 'DM Mono';
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .metrics>b {
+      display: block;
+      margin: 10px 0 3px;
+      font-size: 23px;
+      letter-spacing: -.8px;
+      color: var(--ink);
+    }
+
+    .panel {
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+    }
+
+    .panel h2 {
+      font-size: 14px;
+      margin: 0;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .panel-head p {
+      font-size: 10px;
+      color: var(--muted);
+      margin: 4px 0 0;
+    }
+
+    .form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 11px;
+    }
+
+    .form label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #38516e;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .form select, .form input {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 10px;
+      font: 11px Manrope;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .form select:focus, .form input:focus {
+      border-color: #004b93;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .list-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .list-item {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      padding: 11px;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+
+    .sync-note { background:#e8f1fa; border:1px solid #bfd4e8; color:#274b70; border-radius:7px; padding:10px 12px; margin-bottom:14px; font-size:11px; }
+    .txn-warning { background:#fff4e5; border:1px solid #f3c779; color:#8a4b08; border-radius:6px; padding:9px 10px; font-size:11px; }
+
+    @media(max-width: 720px) {
+      .side {
+        transform: translateX(-100%);
+        transition: .2s;
+      }
+      .side.open {
+        transform: none;
+      }
+      main {
+        margin-left: 0;
+        width: 100%;
+      }
+      header {
+        padding: 0 18px;
+      }
+      .page {
+        padding: 25px 17px;
+      }
+      .form {
+        grid-template-columns: 1fr;
+      }
+      .metrics { grid-template-columns:1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <aside class="side" id="sidebar">
+      <a class="brand" href="#"><span>F</span>FiestaFlow</a>
+      <small class="sub">SALES & DISTRIBUTION</small>
+      <nav>
+        <small>Operations</small>
+        <button class="nav active" id="tabBtnSales" onclick="switchTab('sales')">
+          ▦ <b>Field Transactions</b>
+        </button>
+        <button class="nav" id="tabBtnFranchise" onclick="switchTab('franchise')">
+          ⊞ <b>Franchise Lead</b><i>New</i>
+        </button>
+        <button class="nav" id="tabBtnAttendance" onclick="switchTab('attendance')">
+          ⏱️ <b>Time In / Time Out</b><i>Sync</i>
+        </button>
+        <small>Account Info</small>
+        <button class="profile" onclick="handleLogout()" title="Click to Log Out">
+          <span id="profileInitials">SF</span>
+          <p>
+            <b id="salesmanEmail">Bypassed User</b>
+            <small id="profileRole">Field Sales Agent</small>
+          </p>
+          <i>···</i>
+        </button>
+      </nav>
+    </aside>
+
+    <main>
+      <header>
+        <div>
+          <small>Field Agent Portal</small>
+          <b id="headTitle">Field Transactions Ledger</b>
+        </div>
+        <div class="head-actions">
+          <span class="live">● Live terminal</span>
+          <button onclick="handleLogout()" class="outline" title="Log Out">Exit / Home</button>
+        </div>
+      </header>
+
+      <div id="sectionSales" class="page active">
+        <div class="sync-note" id="salesSyncNote">Shared prototype ledger enabled. Transactions recorded here can be viewed from the management dashboard when both pages are opened from the same browser/site.</div>
+        <div class="metrics">
+          <article>
+            <small>TODAY'S FIELD ORDERS</small>
+            <b id="statTotalOrders">0</b>
+            <span style="color: var(--muted); font-size: 9px; display: block; margin-top: 4px;">This salesman's daily records</span>
+          </article>
+          <article>
+            <small>FIELD SALES TOTAL</small>
+            <b id="statTotalSales" style="color: #004b93;">₱0.00</b>
+            <span style="color: var(--muted); font-size: 9px; display: block; margin-top: 4px;">Gross collections</span>
+          </article>
+          <article><small>FILLED / EMPTY MOVEMENT</small><b id="statCylinderMovement">0 / 0</b><span style="color:var(--muted);font-size:9px;display:block;margin-top:4px;">Issued versus returned today</span></article>
+          <article><small>RECORDS REQUIRING REVIEW</small><b id="statReviewCount" style="color:#d81e2c;">0</b><span style="color:var(--muted);font-size:9px;display:block;margin-top:4px;">Payment, proof or count exception</span></article>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Record Field Transaction</h2>
+              <p>Log cylinder drops, collection counts, payment details, GPS coords, and photo upload.</p>
+            </div>
+          </div>
+          
+          <div class="form">
+            <div class="full">
+              <label>Customer / Outlet Name</label>
+              <input type="text" id="customerName" placeholder="e.g. Aling Nena Sari-Sari Store">
+            </div>
+
+            <div>
+              <label>Filled Refills Issued</label>
+              <input type="number" id="fieldFilledQty" value="1" min="0" oninput="recalculateFieldSale()" style="color: #d81e2c; font-weight: 700; font-size: 14px; text-align: center;">
+            </div>
+
+            <div>
+              <label>Empties Returned</label>
+              <input type="number" id="fieldEmptyQty" value="1" min="0" oninput="recalculateFieldSale()" style="color: #004b93; font-weight: 700; font-size: 14px; text-align: center;">
+            </div>
+
+            <div>
+              <label>Payment Mode</label>
+              <select id="fieldPaymentMethod">
+                <option value="cash">Cash on Hand</option>
+                <option value="gcash">GCash Transfer</option>
+                <option value="bank_transfer">Online Bank Transfer</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Computed Amount</label>
+              <div id="fieldTotalDisplay" style="background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; font-weight: 800; font-size: 14px; color: #d81e2c; text-align: center; height: 38px; display: flex; align-items: center; justify-content: center; font-family: 'DM Mono';">
+                ₱35.00
+              </div>
+            </div>
+
+            <div>
+              <label>GPS Coordinates</label>
+              <div style="display: flex; gap: 5px;">
+                <input type="text" id="fieldGpsCoords" placeholder="Lat, Lng" readonly style="background: #f0f4f8;">
+                <button type="button" onclick="captureGPS('fieldGpsCoords')" class="outline" style="white-space: nowrap; height: 38px;">📍 Get GPS</button>
+              </div>
+            </div>
+
+            <div>
+              <label>Attach Proof / Photo</label>
+              <input type="file" id="fieldAttachment" accept="image/*" style="padding: 6px;">
+            </div>
+
+            <div class="full" style="margin-top: 8px;">
+              <div id="fieldSaleClassification" class="txn-warning" style="margin-bottom:8px;">Standard exchange · refill content only.</div>
+              <button onclick="submitFieldTransaction()" class="primary" style="width: 100%; height: 42px;">
+                Submit Field Transaction
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Recent Field Logs</h2>
+              <p>Real-time route order transaction history.</p>
+            </div>
+          </div>
+          <div id="fieldTransactionsList" class="list-container">
+            <p style="color: var(--muted); text-align: center; padding: 16px;">Loading field records...</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="sectionFranchise" class="page">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>New Franchise Inquiry / Registration</h2>
+              <p>Submit prospect applications with GPS location tracking and establishment photo upload.</p>
+            </div>
+          </div>
+          
+          <div class="form">
+            <div class="full">
+              <label>Business / Store Name</label>
+              <input type="text" id="franchiseBusinessName" placeholder="e.g. CDO Prime Water Hub">
+            </div>
+
+            <div>
+              <label>Owner's Full Name</label>
+              <input type="text" id="franchiseOwnerName" placeholder="Juan Dela Cruz">
+            </div>
+
+            <div>
+              <label>Contact Number</label>
+              <input type="text" id="franchisePhone" placeholder="09171234567">
+            </div>
+
+            <div class="full">
+              <label>Email Address</label>
+              <input type="email" id="franchiseEmail" placeholder="owner@gmail.com">
+            </div>
+
+            <div>
+              <label>Franchise Package Tier</label>
+              <select id="franchiseTier">
+                <option value="Standard">Standard Package</option>
+                <option value="Premium">Premium Package</option>
+                <option value="Enterprise">Enterprise Package</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Proposed Location / City</label>
+              <input type="text" id="franchiseLocation" placeholder="Carmen, CDO">
+            </div>
+
+            <div>
+              <label>GPS Coordinates</label>
+              <div style="display: flex; gap: 5px;">
+                <input type="text" id="franchiseGpsCoords" placeholder="Lat, Lng" readonly style="background: #f0f4f8;">
+                <button type="button" onclick="captureGPS('franchiseGpsCoords')" class="outline" style="white-space: nowrap; height: 38px;">📍 Get GPS</button>
+              </div>
+            </div>
+
+            <div>
+              <label>Upload Site Photo</label>
+              <input type="file" id="franchiseAttachment" accept="image/*" style="padding: 6px;">
+            </div>
+
+            <div class="full" style="margin-top: 8px;">
+              <button onclick="submitFranchiseLead()" class="primary" style="width: 100%; height: 42px;">
+                Submit Franchise Application
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Your Submitted Franchise Leads</h2>
+              <p>Live approval pipeline tracker for submitted network leads.</p>
+            </div>
+          </div>
+          <div id="franchiseLeadsList" class="list-container">
+            <p style="color: var(--muted); text-align: center; padding: 16px;">Loading franchise leads...</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="sectionAttendance" class="page">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Field Agent Attendance Portal</h2>
+              <p>Clock in or clock out for your daily shift with real-time GPS tracking sync.</p>
+            </div>
+          </div>
+          
+          <div class="form">
+            <div class="full">
+              <label>Current Status & Server Time</label>
+              <div id="attendanceClockDisplay" style="background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-weight: 800; font-size: 16px; color: #004b93; text-align: center; font-family: 'DM Mono';">
+                Loading live time...
+              </div>
+            </div>
+
+            <div>
+              <label>Action Type</label>
+              <select id="attendanceType">
+                <option value="TIME_IN">🕒 TIME IN (Shift Start)</option>
+                <option value="TIME_OUT">🕒 TIME OUT (Shift End)</option>
+              </select>
+            </div>
+
+            <div>
+              <label>GPS Location Tag</label>
+              <div style="display: flex; gap: 5px;">
+                <input type="text" id="attendanceGpsCoords" placeholder="Lat, Lng" readonly style="background: #f0f4f8;">
+                <button type="button" onclick="captureGPS('attendanceGpsCoords')" class="outline" style="white-space: nowrap; height: 38px;">📍 Get GPS</button>
+              </div>
+            </div>
+
+            <div class="full">
+              <label>Optional Remarks / Notes</label>
+              <input type="text" id="attendanceRemarks" placeholder="e.g. Starting morning route at Carmen district">
+            </div>
+
+            <div class="full" style="margin-top: 8px;">
+              <button onclick="submitAttendanceSync()" class="primary" style="width: 100%; height: 42px;">
+                Submit Attendance & Sync
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Attendance Sync History</h2>
+              <p>Recorded time-in and time-out logs.</p>
+            </div>
+          </div>
+          <div id="attendanceList" class="list-container">
+            <p style="color: var(--muted); text-align: center; padding: 16px;">Loading attendance logs...</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let baseRefillPrice = 35.00;
+    let baseContainerPrice = 150.00;
+    let defaultUserEmail = "salesman@fiestaflow.local";
+    const portalSessionKey = 'fiestaflow_session_v1';
+    function clearSalesmanOperationalCache(){localStorage.removeItem('fiestaflow_transactions_v1')}
+    function readPortalSession(){try{return JSON.parse(sessionStorage.getItem(portalSessionKey)||localStorage.getItem(portalSessionKey)||'null')}catch(_){return null}}
+    function requireSalesmanSession(){const session=readPortalSession();if(!session||session.role!=='salesman'){window.location.replace('login.html');return null}defaultUserEmail=session.email;return session}
+    const sharedTransactionKey = 'fiestaflow_transactions_v1';
+    const sharedFranchiseLeadKey = 'fiestaflow_franchise_leads_v1';
+    const salesChannel = 'Truck Sale';
+
+    function getSharedTransactions() {
+      try { return JSON.parse(localStorage.getItem(sharedTransactionKey) || '[]'); } catch (_) { return []; }
+    }
+    function saveSharedTransactions(rows) {
+      localStorage.setItem(sharedTransactionKey, JSON.stringify(rows));
+      if ('BroadcastChannel' in window) { const channel=new BroadcastChannel('fiestaflow-operations'); channel.postMessage({type:'transactions-updated'}); channel.close(); }
+    }
+    function getSharedFranchiseLeads(){try{return JSON.parse(localStorage.getItem(sharedFranchiseLeadKey)||'[]')}catch(_){return[]}}
+    function saveSharedFranchiseLeads(rows){
+      localStorage.setItem(sharedFranchiseLeadKey,JSON.stringify(rows));
+      if('BroadcastChannel'in window){const channel=new BroadcastChannel('fiestaflow-operations');channel.postMessage({type:'franchise-leads-updated'});channel.close()}
+    }
+    function getDataClient() { return window.supabaseClient && typeof window.supabaseClient.from === 'function' ? window.supabaseClient : null; }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      clearSalesmanOperationalCache();
+      if(!requireSalesmanSession())return;
+      // Live clock ticker
+      setInterval(() => {
+        const now = new Date();
+        const timeString = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' });
+        const clockEl = document.getElementById('attendanceClockDisplay');
+        if (clockEl && !clockEl.dataset.manual) {
+          clockEl.textContent = timeString;
+        }
+      }, 1000);
+
+      document.getElementById('salesmanEmail').textContent = defaultUserEmail;
+      document.getElementById('profileInitials').textContent = defaultUserEmail.substring(0, 2).toUpperCase();
+
+      await fetchFieldTransactions(defaultUserEmail);
+      await fetchFranchiseLeads(defaultUserEmail);
+      await fetchAttendanceLogs(defaultUserEmail);
+      recalculateFieldSale();
+    });
+
+    async function handleLogout() {
+      sessionStorage.removeItem(portalSessionKey);
+      localStorage.removeItem(portalSessionKey);
+      try {
+        const client=getDataClient();
+        if(client&&client.auth){
+          await Promise.race([
+            client.auth.signOut({scope:'local'}),
+            new Promise(resolve=>setTimeout(resolve,2000))
+          ]);
+        }
+      } catch (error) { console.warn('Supabase sign-out could not complete.', error); }
+      finally { window.location.replace('login.html'); }
+    }
+
+    function switchTab(tab) {
+      const salesSec = document.getElementById('sectionSales');
+      const franchiseSec = document.getElementById('sectionFranchise');
+      const attendanceSec = document.getElementById('sectionAttendance');
+      const btnSales = document.getElementById('tabBtnSales');
+      const btnFranchise = document.getElementById('tabBtnFranchise');
+      const btnAttendance = document.getElementById('tabBtnAttendance');
+      const headTitle = document.getElementById('headTitle');
+
+      salesSec.classList.remove('active');
+      franchiseSec.classList.remove('active');
+      attendanceSec.classList.remove('active');
+      btnSales.classList.remove('active');
+      btnFranchise.classList.remove('active');
+      btnAttendance.classList.remove('active');
+
+      if (tab === 'sales') {
+        salesSec.classList.add('active');
+        btnSales.classList.add('active');
+        headTitle.textContent = 'Field Transactions Ledger';
+      } else if (tab === 'franchise') {
+        franchiseSec.classList.add('active');
+        btnFranchise.classList.add('active');
+        headTitle.textContent = 'Franchise Pipeline & Leads';
+      } else if (tab === 'attendance') {
+        attendanceSec.classList.add('active');
+        btnAttendance.classList.add('active');
+        headTitle.textContent = 'Time In / Time Out Sync';
+      }
+    }
+
+    // Helper to capture GPS coordinates via browser
+    function captureGPS(targetInputId) {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+      }
+      const inputEl = document.getElementById(targetInputId);
+      inputEl.value = "Acquiring GPS...";
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(6);
+          const lng = position.coords.longitude.toFixed(6);
+          inputEl.value = `${lat}, ${lng}`;
+        },
+        (error) => {
+          console.error("GPS error:", error);
+          alert("Unable to retrieve your location. Please check permissions.");
+          inputEl.value = "";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function recalculateFieldSale() {
+      const filled = parseInt(document.getElementById('fieldFilledQty').value) || 0;
+      const empty = parseInt(document.getElementById('fieldEmptyQty').value) || 0;
+
+      let refillQty = filled;
+      let containerQty = 0;
+      let classification = 'Standard Exchange';
+
+      if (empty === 0) {
+        containerQty = filled;
+        classification = 'New Purchase';
+      } else if (filled > empty) {
+        containerQty = filled - empty;
+        classification = 'Mixed Transaction';
+      } else if (empty > filled) {
+        classification = 'Count Review';
+      }
+
+      let subtotal = (refillQty * baseRefillPrice) + (containerQty * baseContainerPrice);
+      document.getElementById('fieldTotalDisplay').textContent = `₱${subtotal.toFixed(2)}`;
+      const classificationEl=document.getElementById('fieldSaleClassification');
+      classificationEl.textContent = classification === 'Count Review' ? 'Stop / review · empties exceed filled quantity. Correct the count or obtain central review.' : `${classification} · ${containerQty ? `${containerQty} unmatched cylinder${containerQty===1?'':'s'} charged as new.` : 'refill content only.'}`;
+      classificationEl.style.background = classification === 'Count Review' ? '#fee2e2' : '#fff4e5';
+    }
+
+    async function submitFieldTransaction() {
+      const customerName = document.getElementById('customerName').value.trim();
+      const filled = parseInt(document.getElementById('fieldFilledQty').value) || 0;
+      const empty = parseInt(document.getElementById('fieldEmptyQty').value) || 0;
+      const paymentMethod = document.getElementById('fieldPaymentMethod').value;
+      const gpsCoords = document.getElementById('fieldGpsCoords').value;
+      const fileInput = document.getElementById('fieldAttachment');
+      const totalText = document.getElementById('fieldTotalDisplay').textContent;
+      const totalAmount = parseFloat(totalText.replace('₱', '').replace(',', '')) || 0;
+
+      if (!customerName) {
+        alert("Please enter a customer or outlet name.");
+        return;
+      }
+
+      if (filled <= 0) {
+        alert("Filled issued quantity must be at least 1.");
+        return;
+      }
+      if (empty > filled) { alert('Empties cannot exceed filled cylinders in a standard field sale. Correct the count or request central review.'); return; }
+
+      const needsProof = ['gcash','bank_transfer','cheque'].includes(paymentMethod);
+      if (needsProof && !(fileInput.files && fileInput.files[0])) { alert('Please attach payment proof for GCash, bank transfer, or cheque.'); return; }
+
+      let attachmentUrl = null;
+      const client = getDataClient();
+      if (!client || !client.auth) {
+        alert('Supabase is not connected. Nothing was saved.');
+        return;
+      }
+      const { data: { user }, error: userError } = await client.auth.getUser();
+      if (userError || !user) {
+        alert('Your login session has expired. Please sign in again.');
+        window.location.replace('login.html');
+        return;
+      }
+      if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        const filePath = `transactions/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await client.storage.from('uploads').upload(filePath, file);
+        if (uploadError) { alert('Attachment upload failed: '+uploadError.message); return; }
+        const { data: publicUrlData } = client.storage.from('uploads').getPublicUrl(filePath);
+        attachmentUrl = publicUrlData.publicUrl;
+      }
+
+        const transactionPayload = {
+          cashier_id: user.id,
+          location_id: 'a0000000-0000-0000-0000-000000000001',
+          customer_type: 'field_outlet',
+        customer_name: customerName,
+        filled_count: filled,
+        empty_count: empty,
+        filled_qty: filled,
+        empty_qty: empty,
+        sale_type: empty === 0 ? 'new_sale' : (filled > empty ? 'mixed' : 'exchange'),
+        payment_method: paymentMethod,
+        total_amount: totalAmount,
+        gps_coords: gpsCoords,
+        attachment_url: attachmentUrl,
+        cashier_email: user.email,
+        sales_personnel: user.email,
+        sales_channel: salesChannel,
+          location: 'Main Branch POS',
+        payment_status: paymentMethod === 'cheque' ? 'Pending Deposit' : (needsProof ? 'Proof Attached' : 'Collected'),
+        status: paymentMethod === 'cheque' ? 'Pending Deposit' : 'Recorded'
+      };
+
+      try {
+        const { data: savedTransaction, error } = await client.from('sales_transactions').insert([transactionPayload]).select('*').single();
+        if (error) throw error;
+        const sharedRows=getSharedTransactions();
+        sharedRows.unshift(savedTransaction);
+        saveSharedTransactions(sharedRows.slice(0,500));
+
+        alert(`Field transaction for "${customerName}" saved to Supabase and shared with management.`);
+        document.getElementById('customerName').value = '';
+        document.getElementById('fieldGpsCoords').value = '';
+        document.getElementById('fieldAttachment').value = '';
+        document.getElementById('fieldFilledQty').value = 1;
+        document.getElementById('fieldEmptyQty').value = 1;
+        recalculateFieldSale();
+
+        await fetchFieldTransactions(defaultUserEmail);
+      } catch (err) {
+        console.error("Error saving field transaction:", err);
+        alert("❌ Failed to save: " + err.message);
+      }
+    }
+
+    async function submitFranchiseLead() {
+      const businessName = document.getElementById('franchiseBusinessName').value.trim();
+      const ownerName = document.getElementById('franchiseOwnerName').value.trim();
+      const phone = document.getElementById('franchisePhone').value.trim();
+      const email = document.getElementById('franchiseEmail').value.trim();
+      const tier = document.getElementById('franchiseTier').value;
+      const location = document.getElementById('franchiseLocation').value.trim();
+      const gpsCoords = document.getElementById('franchiseGpsCoords').value;
+      const fileInput = document.getElementById('franchiseAttachment');
+      const client=getDataClient();
+
+      if (!businessName || !ownerName || !phone) {
+        alert("Please fill in at least the Business Name, Owner Name, and Contact Number.");
+        return;
+      }
+      if(!client){alert('Franchise applications require the shared backend so central management can approve them.');return;}
+      const { data: { user }, error: userError } = await client.auth.getUser();
+      if(userError||!user){alert('Your login session has expired. Please sign in again.');window.location.replace('login.html');return;}
+
+      let attachmentUrl = null;
+      if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        const filePath = `franchises/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await client.storage.from('uploads').upload(filePath, file);
+        if (uploadError) { alert('Attachment upload failed: '+uploadError.message); return; }
+        const { data: publicUrlData } = client.storage.from('uploads').getPublicUrl(filePath);
+        attachmentUrl = publicUrlData.publicUrl;
+      }
+
+      const franchisePayload = {
+        business_name: businessName,
+        contact_person: ownerName, 
+        phone: phone,
+        email: email,
+        package_tier: tier || 'Standard', 
+        location: location,
+        gps_coords: gpsCoords,
+        attachment_url: attachmentUrl,
+        salesman_id: user.id,
+        salesman_email: user.email,
+        status: 'PENDING'
+      };
+
+      try {
+        const { data: savedLead, error } = await client.from('onboardings').insert([franchisePayload]).select('*').single();
+        if (error) throw error;
+        const sharedLeads=getSharedFranchiseLeads();
+        sharedLeads.unshift(savedLead);
+        saveSharedFranchiseLeads(sharedLeads.slice(0,500));
+
+        alert(`✅ Franchise application for "${businessName}" submitted successfully!`);
+        document.getElementById('franchiseBusinessName').value = '';
+        document.getElementById('franchiseOwnerName').value = '';
+        document.getElementById('franchisePhone').value = '';
+        document.getElementById('franchiseEmail').value = '';
+        document.getElementById('franchiseLocation').value = '';
+        document.getElementById('franchiseGpsCoords').value = '';
+        document.getElementById('franchiseAttachment').value = '';
+
+        await fetchFranchiseLeads(defaultUserEmail);
+      } catch (err) {
+        console.error("Error submitting franchise lead:", err);
+        alert("❌ Failed to submit franchise lead: " + err.message);
+      }
+    }
+
+    async function submitAttendanceSync() {
+      const type = document.getElementById('attendanceType').value;
+      const gpsCoords = document.getElementById('attendanceGpsCoords').value;
+      const remarks = document.getElementById('attendanceRemarks').value.trim();
+      const client=getDataClient();
+      if(!client){alert('Attendance sync requires the production backend for authenticated identity and authoritative server time.');return;}
+      const { data: { user }, error: userError } = await client.auth.getUser();
+      if(userError||!user){alert('Your login session has expired. Please sign in again.');window.location.replace('login.html');return;}
+
+      const payload = {
+        user_id: user.id,
+        user_email: user.email,
+        attendance_type: type,
+        gps_coords: gpsCoords,
+        remarks: remarks
+      };
+
+      try {
+        const { error } = await client.from('attendance').insert([payload]);
+        if (error) throw error;
+
+        alert(`✅ Attendance (${type}) synchronized successfully!`);
+        document.getElementById('attendanceRemarks').value = '';
+        document.getElementById('attendanceGpsCoords').value = '';
+        await fetchAttendanceLogs(defaultUserEmail);
+      } catch (err) {
+        console.error("Error syncing attendance:", err);
+        alert("❌ Failed to sync attendance: " + err.message);
+      }
+    }
+
+    async function fetchFieldTransactions(userEmail) {
+      const container = document.getElementById('fieldTransactionsList');
+      try {
+        const client=getDataClient();
+        let data=[];
+        if (client) {
+          const result=await client.from('sales_transactions').select('*').eq('sales_personnel',userEmail).order('created_at',{ascending:false}).limit(100);
+          if (result.error) throw result.error;
+          data=result.data||[];
+        }
+        const localRows=getSharedTransactions().filter(item => item.sales_personnel === userEmail);
+        const merged=new Map([...data,...localRows].map(item=>[item.id || `${item.created_at}-${item.customer_name}`,item]));
+        data=[...merged.values()].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+        const today=new Date().toLocaleDateString('en-CA');
+        data=data.filter(item=>new Date(item.created_at).toLocaleDateString('en-CA')===today);
+
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 16px;">No field transactions recorded yet.</p>';
+          document.getElementById('statTotalOrders').textContent = '0';
+          document.getElementById('statTotalSales').textContent = '₱0.00';
+          document.getElementById('statCylinderMovement').textContent = '0 / 0';
+          document.getElementById('statReviewCount').textContent = '0';
+          return;
+        }
+
+        let totalSalesSum = 0;
+        let filledTotal=0, emptyTotal=0, reviewCount=0;
+        container.innerHTML = data.map(item => {
+          totalSalesSum += Number(item.total_amount || 0);
+          filledTotal += Number(item.filled_qty || 0); emptyTotal += Number(item.empty_qty || 0);
+          if (item.status === 'Pending Deposit' || item.status === 'Review' || item.sale_type === 'review_required') reviewCount++;
+          return `
+            <div class="list-item">
+              <div>
+                <b>${item.customer_name || 'Outlet'}</b>
+                <small>${item.sale_type || 'Transaction'} · Filled: ${item.filled_qty} | Empty: ${item.empty_qty} · ${item.payment_status || item.payment_method}</small>
+              </div>
+              <div style="text-align: right;">
+                <b style="color: #d81e2c;">₱${(item.total_amount || 0).toFixed(2)}</b>
+                <small>${new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        document.getElementById('statTotalOrders').textContent = data.length;
+        document.getElementById('statTotalSales').textContent = `₱${totalSalesSum.toFixed(2)}`;
+        document.getElementById('statCylinderMovement').textContent = `${filledTotal} / ${emptyTotal}`;
+        document.getElementById('statReviewCount').textContent = reviewCount;
+      } catch (err) {
+        console.error("Error loading transactions:", err);
+        container.innerHTML = '<p style="color: var(--red); text-align: center; padding: 16px;">Failed to load logs.</p>';
+      }
+    }
+
+    async function fetchFranchiseLeads(userEmail) {
+      const container = document.getElementById('franchiseLeadsList');
+      try {
+        const client=getDataClient();
+        if(!client){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:16px;">Prototype ready. Connect the shared backend to submit and monitor franchise approvals.</p>';return;}
+        const { data: cloudData, error } = await client
+          .from('onboardings')
+          .select('*')
+          .eq('salesman_email', userEmail)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (error) throw error;
+        const localData=getSharedFranchiseLeads().filter(item=>String(item.salesman_email||'').toLowerCase()===String(userEmail||'').toLowerCase());
+        const data=[...new Map([...localData,...(cloudData||[])].map(item=>[item.id||`${item.business_name}-${item.created_at}`,item])).values()]
+          .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 16px;">No franchise leads submitted yet.</p>';
+          return;
+        }
+
+        container.innerHTML = data.map(item => `
+          <div class="list-item">
+            <div>
+              <b>${item.business_name} (${item.package_tier})</b>
+              <small>Owner: ${item.contact_person} · ${item.location || 'N/A'}</small>
+            </div>
+            <div style="text-align: right;">
+              <b style="color: #004b93;">${item.status}</b>
+              <small>${item.phone}</small>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error("Error loading franchise leads:", err);
+        container.innerHTML = '<p style="color: var(--red); text-align: center; padding: 16px;">Failed to load franchise leads.</p>';
+      }
+    }
+
+    async function fetchAttendanceLogs(userEmail) {
+      const container = document.getElementById('attendanceList');
+      try {
+        const client=getDataClient();
+        if(!client){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:16px;">No local attendance records yet. Production attendance requires authenticated users and server time.</p>';return;}
+        const { data, error } = await client
+          .from('attendance')
+          .select('*')
+          .eq('user_email', userEmail)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 16px;">No attendance logs found.</p>';
+          return;
+        }
+
+        container.innerHTML = data.map(item => `
+          <div class="list-item">
+            <div>
+              <b>${item.attendance_type}</b>
+              <small>${item.remarks || 'No remarks'} · GPS: ${item.gps_coords || 'N/A'}</small>
+            </div>
+            <div style="text-align: right;">
+              <small>${new Date(item.created_at).toLocaleString()}</small>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error("Error loading attendance logs:", err);
+        container.innerHTML = '<p style="color: var(--red); text-align: center; padding: 16px;">Failed to load attendance logs.</p>';
+      }
+    }
+  </script>
+</body>
+</html>
