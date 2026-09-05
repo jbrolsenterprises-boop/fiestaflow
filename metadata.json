@@ -1,6 +1,0 @@
-{
-  "name": "FiestaGas Operations",
-  "description": "Enterprise distribution operations and point of sale platform for FiestaGas with Supabase authentication, live ledger, inventory tracking, fleet monitoring, and franchisee management.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
