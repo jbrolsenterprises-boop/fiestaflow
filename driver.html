@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FiestaFlow | Driver & Delivery Portal</title>
@@ -78,6 +81,15 @@
       padding: 3px 7px;
       margin-right: 5px;
       font-size: 17px;
+    }
+
+    .brand-logo {
+      display:block;
+      width:190px;
+      height:auto;
+      max-width:100%;
+      object-fit:contain;
+      border-radius:7px;
     }
 
     .sub {
@@ -393,13 +405,16 @@
       }
       .driver-metrics{grid-template-columns:1fr 1fr}
     }
+    /* Android APK / phone WebView layout */
+    html,body{width:100%;max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%}
+    @media(max-width:720px){body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}.app,main{width:100%;max-width:100%;min-width:0}main{min-height:100dvh;overflow-x:hidden}.side{width:min(86vw,290px);padding-top:max(20px,env(safe-area-inset-top));box-shadow:12px 0 30px rgba(15,23,42,.25)}header{height:auto;min-height:64px;padding:8px 12px;gap:8px}header>#menu{display:block;min-width:44px;min-height:44px;border:0;background:transparent;font-size:22px;color:#004b93}.page{width:100%;max-width:100%;padding:16px 12px calc(28px + env(safe-area-inset-bottom));overflow-x:hidden}.driver-metrics{grid-template-columns:1fr!important}.panel,.stop-card{max-width:100%;overflow:hidden}.form{grid-template-columns:1fr!important}.form>*{min-width:0}.form input,.form select,button{min-height:44px}.form input,.form select{font-size:16px!important}.head-actions{gap:6px}.head-actions .live{display:none}.stop-head{flex-wrap:wrap}.nav{min-height:44px}}
   </style>
 </head>
 <body>
 
   <div class="app">
     <aside class="side" id="sidebar">
-      <a class="brand" href="#"><span>F</span>FiestaFlow</a>
+      <a class="brand" href="#" aria-label="FiestaFlow home"><img class="brand-logo" src="Gemini_Generated_Image_aljnm4aljnm4aljn(1).jfif" alt="FiestaFlow"></a>
       <small class="sub">DRIVER & DISTRIBUTION</small>
       <nav>
         <small>Operations</small>
@@ -423,12 +438,13 @@
 
     <main>
       <header>
+        <button id="menu" type="button" aria-label="Open navigation" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
         <div>
           <small>Driver Terminal Portal</small>
           <b id="headTitle">Today's Route & Delivery Control</b>
         </div>
         <div class="head-actions">
-          <span class="live" id="driverSyncStatus">● Prototype sync ready</span>
+          <span class="live" id="driverSyncStatus">● Driver build 20260907-1135</span>
           <button class="outline" onclick="driverLogout()">Sign out</button>
         </div>
       </header>
@@ -498,7 +514,6 @@
       </div>
 
       <div id="sectionDeliveries" class="page active">
-        <div class="route-banner">Shared prototype ledger enabled. Completed stops appear in the management dashboard when both pages use the same browser/site. Offline entries remain queued locally until a backend connection is available.</div>
         <div class="driver-metrics">
           <div class="driver-metric"><small>ASSIGNED STOPS</small><b id="driverAssignedStops">0</b></div>
           <div class="driver-metric"><small>COMPLETED TODAY</small><b id="driverCompletedStops">0</b></div>
@@ -565,18 +580,18 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      clearDriverOperationalCache();
       if(!requireDriverSession())return;
       // Live clock ticker
       setInterval(() => {
         const now = new Date();
-        const timeString = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' });
+        const timeString = now.toLocaleString('en-PH',{timeZone:'Asia/Manila',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit'});
         const clockEl = document.getElementById('attendanceClockDisplay');
-        if (clockEl) {
+        if (clockEl && !clockEl.dataset.serverStatus) {
           clockEl.textContent = timeString;
         }
       }, 1000);
 
+      await confirmDriverSupabaseConnection();
       document.getElementById('driverEmail').textContent = defaultUserEmail;
       document.getElementById('profileInitials').textContent = defaultUserEmail.substring(0, 2).toUpperCase();
 
@@ -634,7 +649,7 @@
         attendance_type: type,
         gps_coords: gpsCoords,
         remarks: remarks,
-        created_at: new Date().toISOString()
+        // created_at is assigned by the Supabase server default.
       };
 
       try {
@@ -681,7 +696,7 @@
               <small style="display: block; color: var(--muted);">${log.remarks || 'No remarks'}</small>
             </div>
             <div style="text-align: right;">
-              <small style="color: var(--muted);">${new Date(log.created_at).toLocaleString()}</small>
+              <small style="color: var(--muted);">${manilaDateTime(log.created_at)}</small>
               <span style="display: block; font-size: 9px; font-family: 'DM Mono'; color: #004b93;">${log.gps_coords || 'No GPS'}</span>
             </div>
           </div>
@@ -753,16 +768,56 @@
       }
     }
 
-    // Connected driver prototype: local shared ledger now, Supabase-ready later.
+    // Driver operations sync through Supabase and retain a device queue only when connectivity is interrupted.
     const driverTransactionKey='fiestaflow_driver_transactions_v1';
     const driverManifest=[];
     let driverAssignmentsChannel=null;
     let liveGpsWatchId=null;
     let lastGpsUploadAt=0;
     function driverClient(){return window.supabaseClient&&typeof window.supabaseClient.from==='function'?window.supabaseClient:null}
+    function manilaDateTime(value){return new Date(value||Date.now()).toLocaleString('en-PH',{timeZone:'Asia/Manila',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit'})}
+    function manilaDateKey(value){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value||Date.now()));const get=type=>parts.find(part=>part.type===type)?.value||'';return `${get('year')}-${get('month')}-${get('day')}`}
     function readDriverTransactions(){try{return JSON.parse(localStorage.getItem(driverTransactionKey)||'[]')}catch(_){return[]}}
     function writeDriverTransactions(rows){localStorage.setItem(driverTransactionKey,JSON.stringify(rows));if('BroadcastChannel'in window){const c=new BroadcastChannel('fiestaflow-operations');c.postMessage({type:'driver-transactions-updated'});c.close()}}
-    function notifyDriverRefresh(){fetchAssignedDeliveries();renderDriverTransactions()}
+    async function notifyDriverRefresh(){await syncPendingDriverTransactions();await fetchAssignedDeliveries();await renderDriverTransactions()}
+
+    async function syncDeliveryTransaction(payload){
+      const client=driverClient();
+      if(!client)throw new Error('Supabase is not connected.');
+      const compatiblePayload={...payload};
+      delete compatiblePayload.attachment_url;
+      delete compatiblePayload.sync_state;
+      delete compatiblePayload.sync_error;
+      const save=await client.from('delivery_transactions').upsert([compatiblePayload],{onConflict:'id'}).select('*').single();
+      if(save.error)throw save.error;
+      const deliveryStatus=payload.result==='Delivered'?'COMPLETED':String(payload.result||'RECORDED').toUpperCase().replace(/\s+/g,'_');
+      const stopUpdate=await client.from('deliveries').update({status:deliveryStatus}).eq('id',payload.stop_id);
+      if(stopUpdate.error)throw new Error(`Transaction saved, but the assigned stop was not updated: ${stopUpdate.error.message}`);
+      return {...payload,...(save.data||{}),sync_state:'synced',sync_error:null};
+    }
+
+    async function syncPendingDriverTransactions(){
+      const client=driverClient();
+      if(!client)return false;
+      const rows=readDriverTransactions();
+      const pending=rows.filter(row=>row.sync_state!=='synced');
+      if(!pending.length)return true;
+      let changed=false;
+      for(const row of pending){
+        try{
+          const synced=await syncDeliveryTransaction(row);
+          const index=rows.findIndex(item=>String(item.id)===String(row.id));
+          if(index>=0)rows[index]=synced;
+          changed=true;
+        }catch(error){
+          const index=rows.findIndex(item=>String(item.id)===String(row.id));
+          if(index>=0)rows[index]={...rows[index],sync_state:'pending',sync_error:error.message};
+          changed=true;
+        }
+      }
+      if(changed)writeDriverTransactions(rows.slice(0,500));
+      return rows.every(row=>row.sync_state==='synced');
+    }
 
     async function fetchAssignedDeliveries(){
       const container=document.getElementById('deliveriesList');let rows=[];const client=driverClient();
@@ -778,10 +833,30 @@
       const client=driverClient();if(!client||typeof client.channel!=='function'||driverAssignmentsChannel)return;
       driverAssignmentsChannel=client.channel('driver-route-assignments')
         .on('postgres_changes',{event:'*',schema:'public',table:'deliveries',filter:`driver_email=eq.${defaultUserEmail}`},()=>fetchAssignedDeliveries())
+        .on('postgres_changes',{event:'*',schema:'public',table:'delivery_transactions',filter:`driver_email=eq.${defaultUserEmail}`},()=>renderDriverTransactions())
         .subscribe();
     }
 
-    window.addEventListener('fiestaflow:supabase-ready',()=>{fetchAssignedDeliveries();setupDriverAssignmentsRealtime()});
+    window.addEventListener('fiestaflow:supabase-ready',async()=>{await syncPendingDriverTransactions();await fetchAssignedDeliveries();setupDriverAssignmentsRealtime()});
+    window.addEventListener('online',async()=>{if(await confirmDriverSupabaseConnection()){await syncPendingDriverTransactions();await fetchAssignedDeliveries();await renderDriverTransactions()}});
+
+    async function confirmDriverSupabaseConnection(){
+      const client=driverClient(),status=document.getElementById('driverSyncStatus');
+      if(!client||!client.auth){status.textContent='● Supabase offline';status.style.color='var(--red)';return false}
+      const {data:{user},error}=await client.auth.getUser();
+      if(error||!user){status.textContent='● Supabase connected · sign-in required';status.style.color='#b7791f';return false}
+      // Use the authenticated email for assignments, GPS, attendance, and RLS.
+      defaultUserEmail=String(user.email||defaultUserEmail).trim().toLowerCase();
+      document.getElementById('driverEmail').textContent=defaultUserEmail;
+      document.getElementById('profileInitials').textContent=defaultUserEmail.substring(0,2).toUpperCase();
+      status.textContent='● Supabase connected';status.style.color='#166534';
+      await syncPendingDriverTransactions();
+      return true;
+    }
+
+    window.addEventListener('fiestaflow:supabase-ready',async()=>{
+      if(await confirmDriverSupabaseConnection()){await fetchAssignedDeliveries();await fetchAttendanceLogs(defaultUserEmail);setupDriverAssignmentsRealtime()}
+    });
 
     async function startLiveGpsTracking(){
       const client=driverClient(),status=document.getElementById('liveGpsStatus');
@@ -794,10 +869,12 @@
       liveGpsWatchId=navigator.geolocation.watchPosition(async position=>{
         const now=Date.now();if(now-lastGpsUploadAt<10000)return;lastGpsUploadAt=now;
         const option=document.getElementById('deliveryStop')?.selectedOptions?.[0];
-        const payload={driver_id:user.id,driver_email:user.email,route_id:option?.dataset?.route||null,latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy_m:position.coords.accuracy,speed_mps:position.coords.speed,heading_deg:position.coords.heading,is_tracking:true,recorded_at:new Date().toISOString()};
-        const result=await client.from('driver_locations').upsert(payload,{onConflict:'driver_id'});
-        if(result.error){status.textContent='GPS sync failed: '+result.error.message;status.style.color='var(--red)';return}
-        status.textContent=`● Sharing ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)} · ${new Date().toLocaleTimeString()}`;status.style.color='#166534';
+        const payload={driver_id:user.id,driver_email:String(user.email||defaultUserEmail).toLowerCase(),route_id:option?.dataset?.route||null,latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy_m:position.coords.accuracy,speed_mps:position.coords.speed,heading_deg:position.coords.heading,is_tracking:true,recorded_at:new Date().toISOString()};
+        // Update-first avoids requiring a database UNIQUE constraint for upsert.
+        let result=await client.from('driver_locations').update(payload).eq('driver_id',user.id).select('driver_id');
+        if(!result.error&&!result.data?.length)result=await client.from('driver_locations').insert([payload]).select('driver_id');
+        if(result.error){status.textContent='GPS sync blocked by Supabase: '+result.error.message;status.style.color='var(--red)';document.getElementById('driverSyncStatus').textContent='● GPS database error';return}
+        status.textContent=`● Sharing ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)} · ${manilaDateTime(Date.now())}`;status.style.color='#166534';
         document.getElementById('driverSyncStatus').textContent='● Live GPS connected';
       },gpsError=>{status.textContent='GPS error: '+gpsError.message;status.style.color='var(--red)';liveGpsWatchId=null},{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
     }
@@ -809,10 +886,22 @@
       document.getElementById('driverSyncStatus').textContent='● GPS stopped';
     }
 
-    function renderDriverTransactions(){
-      const today=new Date().toLocaleDateString('en-CA');const rows=readDriverTransactions().filter(r=>new Date(r.created_at).toLocaleDateString('en-CA')===today);
+    async function renderDriverTransactions(){
+      const today=manilaDateKey(Date.now()),client=driverClient(),localRows=readDriverTransactions();
+      let cloudRows=[],loadError=null;
+      if(client){
+        try{
+          const response=await client.from('delivery_transactions').select('*').eq('driver_email',defaultUserEmail).order('created_at',{ascending:false}).limit(200);
+          if(response.error)throw response.error;
+          cloudRows=response.data||[];
+        }catch(error){loadError=error}
+      }
+      const merged=[...cloudRows,...localRows];
+      const unique=new Map();
+      merged.forEach(row=>{const key=String(row.id||`${row.stop_id||'stop'}-${row.created_at||row.device_captured_at||''}`);if(!unique.has(key))unique.set(key,row)});
+      const rows=[...unique.values()].filter(row=>manilaDateKey(row.created_at||row.device_captured_at)===today).sort((a,b)=>new Date(b.created_at||b.device_captured_at||0)-new Date(a.created_at||a.device_captured_at||0));
       const list=document.getElementById('driverTransactionsList');
-      list.innerHTML=rows.length?rows.map(r=>`<div class="stop-card"><div class="stop-head"><div><b>${r.stop_id} · ${r.customer_name}</b><small style="display:block;color:var(--muted);margin-top:3px">${r.result} · ${r.filled_qty} filled / ${r.empty_qty} empty · ${r.payment_method.replace('_',' ')} · ₱${Number(r.total_amount).toLocaleString()}</small></div><span class="pill">${r.status}</span></div></div>`).join(''):'<p style="color:var(--muted);text-align:center;padding:16px">No delivery transactions recorded today.</p>';
+      list.innerHTML=rows.length?rows.map(r=>`<div class="stop-card"><div class="stop-head"><div><b>${r.stop_id||'Stop'} · ${r.customer_name||'Customer'}</b><small style="display:block;color:var(--muted);margin-top:3px">${r.result||'Recorded'} · ${Number(r.filled_qty||0)} filled / ${Number(r.empty_qty||0)} empty · ${String(r.payment_method||'none').replaceAll('_',' ')} · ₱${Number(r.total_amount||0).toLocaleString()}</small><small style="display:block;color:var(--muted);margin-top:3px">${manilaDateTime(r.created_at||r.device_captured_at)} · ${cloudRows.some(cloud=>String(cloud.id)===String(r.id))||r.sync_state==='synced'?'Supabase synced':'Pending Supabase sync'}</small>${r.sync_error?`<small style="display:block;color:var(--red);margin-top:3px">${r.sync_error}</small>`:''}</div><span class="pill">${r.status||'Recorded'}</span></div></div>`).join(''):`<p style="color:${loadError?'var(--red)':'var(--muted)'};text-align:center;padding:16px">${loadError?'Could not load Supabase transactions: '+loadError.message:'No delivery transactions recorded today.'}</p>`;
       const filled=rows.reduce((s,r)=>s+Number(r.filled_qty||0),0),empty=rows.reduce((s,r)=>s+Number(r.empty_qty||0),0),amount=rows.reduce((s,r)=>s+Number(r.total_amount||0),0),review=rows.filter(r=>r.status==='Review'||r.payment_status==='Pending Deposit').length;
       document.getElementById('driverCompletedStops').textContent=rows.filter(r=>r.result==='Delivered').length;document.getElementById('driverCylinderMovement').textContent=`${filled} / ${empty}`;document.getElementById('driverCollections').textContent=`₱${amount.toLocaleString()} / ${review}`;
     }
@@ -821,9 +910,34 @@
       const select=document.getElementById('deliveryStop'),option=select.options[select.selectedIndex];if(!option){alert('No assigned stop selected.');return}
       const result=document.getElementById('deliveryResult').value,filled=Number(document.getElementById('deliveryFilled').value||0),empty=Number(document.getElementById('deliveryEmpty').value||0),method=document.getElementById('deliveryPayment').value,amount=Number(document.getElementById('deliveryAmount').value||0),recipient=document.getElementById('deliveryRecipient').value.trim(),gps=document.getElementById('deliveryGps').value,notes=document.getElementById('deliveryNotes').value.trim(),proof=document.getElementById('deliveryProof');
       const exception=result!=='Delivered';if(result==='Delivered'&&!recipient){alert('Enter the recipient name for a completed delivery.');return}if(exception&&!notes){alert('Add a reason for partial, failed, payment, damage, or stock exceptions.');return}if(['gcash','bank_transfer','cheque'].includes(method)&&!(proof.files&&proof.files[0])){alert('Attach payment proof for GCash, bank transfer, or cheque.');return}
-      const payload={id:`DLV-${Date.now()}`,stop_id:select.value,route_id:option.dataset.route||'UNASSIGNED',driver_email:defaultUserEmail,vehicle:option.dataset.vehicle||'Vehicle not specified',customer_name:option.dataset.customer,delivery_address:option.dataset.address,result,filled_qty:filled,empty_qty:empty,crates_note:document.getElementById('deliveryCrates').value,payment_method:method,total_amount:amount,payment_status:method==='cheque'?'Pending Deposit':(method==='none'?'No Collection':'Collected'),proof_status:proof.files&&proof.files[0]?'Proof Captured':'Not Required',recipient_name:recipient,gps_coords:gps,notes,status:exception||method==='cheque'?'Review':'Recorded',device_captured_at:new Date().toISOString(),created_at:new Date().toISOString()};
-      const client=driverClient();if(client){try{const save=await client.from('delivery_transactions').insert([payload]);if(save.error)throw save.error}catch(err){console.warn('Backend unavailable; delivery retained in local queue.',err)}}
-      const rows=readDriverTransactions();rows.unshift(payload);writeDriverTransactions(rows.slice(0,500));alert('Delivery transaction saved and shared with central monitoring.');document.getElementById('deliveryRecipient').value='';document.getElementById('deliveryGps').value='';document.getElementById('deliveryNotes').value='';document.getElementById('deliveryProof').value='';notifyDriverRefresh();
+      const client=driverClient();
+      let attachmentUrl=null;
+      if(proof.files&&proof.files[0]){
+        if(!client){alert('Supabase is not connected, so the proof image cannot be shared with management.');return}
+        const file=proof.files[0];
+        const safeName=String(file.name||'proof.jpg').replace(/[^a-zA-Z0-9._-]/g,'_');
+        const filePath=`deliveries/${Date.now()}_${safeName}`;
+        const upload=await client.storage.from('uploads').upload(filePath,file);
+        if(upload.error){alert('Delivery proof upload failed: '+upload.error.message);return}
+        attachmentUrl=client.storage.from('uploads').getPublicUrl(filePath).data.publicUrl;
+      }
+      const deviceCapturedAt=new Date().toISOString();
+      const transactionId=globalThis.crypto?.randomUUID?.()||'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,char=>{const value=Math.random()*16|0;return (char==='x'?value:(value&3|8)).toString(16)});
+      const payload={id:transactionId,stop_id:select.value,route_id:option.dataset.route||'UNASSIGNED',driver_email:defaultUserEmail,vehicle:option.dataset.vehicle||'Vehicle not specified',customer_name:option.dataset.customer,delivery_address:option.dataset.address,result,filled_qty:filled,empty_qty:empty,crates_note:document.getElementById('deliveryCrates').value,payment_method:method,total_amount:amount,payment_status:method==='cheque'?'Pending Deposit':(method==='none'?'No Collection':'Collected'),proof_status:attachmentUrl?'Proof Uploaded':'Not Required',attachment_url:attachmentUrl,recipient_name:recipient,gps_coords:gps,notes,status:exception||method==='cheque'?'Review':'Recorded',device_captured_at:deviceCapturedAt};
+      let savedPayload={...payload,created_at:deviceCapturedAt,sync_state:'pending',sync_error:null};
+      let sharedWithManagement=false;
+      let syncError=null;
+      if(client){
+        try{
+          savedPayload=await syncDeliveryTransaction(payload);
+          sharedWithManagement=true;
+        }catch(err){
+          syncError=err;
+          savedPayload.sync_error=err.message;
+          console.warn('Supabase delivery sync failed; delivery retained in local queue.',err);
+        }
+      }
+      const rows=readDriverTransactions().filter(row=>String(row.id)!==String(savedPayload.id));rows.unshift(savedPayload);writeDriverTransactions(rows.slice(0,500));alert(sharedWithManagement?'Delivery transaction saved and shared with central management.':`Delivery saved and queued for automatic Supabase sync: ${syncError?.message||'Backend unavailable'}`);document.getElementById('deliveryRecipient').value='';document.getElementById('deliveryGps').value='';document.getElementById('deliveryNotes').value='';document.getElementById('deliveryProof').value='';await notifyDriverRefresh();
     }
 
     async function submitAttendanceSync() {
@@ -870,8 +984,17 @@
     }
 
     async function fetchAttendanceLogs(userEmail){
-      const container=document.getElementById('attendanceList'),client=driverClient();if(!client){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:16px">No local attendance records. Connect the production backend for authenticated attendance and server time.</p>';return}const result=await client.from('attendance').select('*').eq('user_email',userEmail).order('created_at',{ascending:false}).limit(10);if(result.error){container.innerHTML='<p style="color:var(--red);text-align:center">Attendance could not be loaded.</p>';return}container.innerHTML=(result.data||[]).map(log=>`<div class="stop-card"><b>${log.attendance_type}</b><small style="display:block;color:var(--muted)">${new Date(log.created_at).toLocaleString()} · ${log.gps_coords||'No GPS'}</small></div>`).join('');
+      const container=document.getElementById('attendanceList'),client=driverClient();
+      if(!client){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:16px">No local attendance records. Connect the production backend for authenticated attendance and server time.</p>';return}
+      const result=await client.from('attendance').select('*').eq('user_email',userEmail).order('created_at',{ascending:false}).limit(10);
+      if(result.error){container.innerHTML='<p style="color:var(--red);text-align:center">Attendance could not be loaded.</p>';return}
+      const rows=result.data||[],clock=document.getElementById('attendanceClockDisplay');
+      if(!rows.length){clock.dataset.serverStatus='true';clock.textContent='NO ATTENDANCE RECORD · Server time unavailable';clock.style.color='var(--muted)';container.innerHTML='<p style="color:var(--muted);text-align:center;padding:16px">No attendance logs found.</p>';return}
+      const latest=rows[0],currentStatus=String(latest.attendance_type||'').toUpperCase()==='TIME_IN'?'TIMED IN':'TIMED OUT';
+      clock.dataset.serverStatus='true';clock.textContent=`${currentStatus} · ${manilaDateTime(latest.created_at)} (Manila server record)`;clock.style.color=currentStatus==='TIMED IN'?'#166534':'#991b1b';
+      container.innerHTML=rows.map(log=>`<div class="stop-card"><b>${log.attendance_type}</b><small style="display:block;color:var(--muted)">${manilaDateTime(log.created_at)} · ${log.gps_coords||'No GPS'}</small></div>`).join('');
     }
   </script>
+  <script>document.querySelectorAll('#sidebar .nav').forEach(button=>button.addEventListener('click',()=>{if(innerWidth<=720)document.getElementById('sidebar').classList.remove('open')}));</script>
 </body>
 </html>
